@@ -1,6 +1,5 @@
 /* eslint-disable @n8n/community-nodes/no-restricted-imports -- loopback wire-level probe */
-import { request } from 'node:http';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { describe, expect, it } from 'vitest';
 
 describe('GET JSON-array body wire probe', () => {

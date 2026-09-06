@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { OpenmartApi } from '../credentials/OpenmartApi.credentials';
 import { Openmart } from '../nodes/Openmart/Openmart.node';
 
-describe('Openmart Batch 1 contract', () => {
+describe('Openmart node contract', () => {
 	it('advertises only Account Get Credit Balance and wires its credential', () => {
 		const description = new Openmart().description;
 		expect(description.credentials).toEqual([{ name: 'openmartApi', required: true }]);
@@ -42,6 +42,14 @@ describe('Openmart Batch 1 contract', () => {
 		const request = vi.fn().mockResolvedValue(response);
 		const context = {
 			getInputData: () => input,
+			getNode: () => ({
+				name: 'Openmart',
+				type: 'openmart',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}),
+			continueOnFail: () => false,
 			helpers: { httpRequestWithAuthentication: request },
 		} as unknown as IExecuteFunctions;
 
@@ -53,5 +61,64 @@ describe('Openmart Batch 1 contract', () => {
 			url: 'https://api.openmart.ai/api/v2/credit-balance',
 			json: true,
 		});
+	});
+
+	it('handles empty input without transport', async () => {
+		const request = vi.fn();
+		const context = {
+			getInputData: () => [],
+			helpers: { httpRequestWithAuthentication: request },
+		} as unknown as IExecuteFunctions;
+		await expect(new Openmart().execute.call(context)).resolves.toEqual([[]]);
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('rejects a malformed 2xx response before emitting data', async () => {
+		const request = vi.fn().mockResolvedValue({ balance: 0, period_start: 'not-a-date' });
+		const context = {
+			getInputData: () => [{ json: {} }],
+			getNode: () => ({
+				name: 'Openmart',
+				type: 'openmart',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}),
+			continueOnFail: () => false,
+			helpers: { httpRequestWithAuthentication: request },
+		} as unknown as IExecuteFunctions;
+		await expect(new Openmart().execute.call(context)).rejects.toThrow(
+			'expected an integer balance and RFC3339',
+		);
+	});
+
+	it('continues sequentially with correctly paired mixed failures', async () => {
+		const input: INodeExecutionData[] = [{ json: { id: 0 } }, { json: { id: 1 } }];
+		const response = {
+			period_start: '2026-09-01T00:00:00Z',
+			period_end: '2026-10-01T00:00:00Z',
+			balance: 4,
+		};
+		const request = vi
+			.fn()
+			.mockRejectedValueOnce({ statusCode: 401 })
+			.mockResolvedValueOnce(response);
+		const context = {
+			getInputData: () => input,
+			getNode: () => ({
+				name: 'Openmart',
+				type: 'openmart',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}),
+			continueOnFail: () => true,
+			helpers: { httpRequestWithAuthentication: request },
+		} as unknown as IExecuteFunctions;
+		const [results] = await new Openmart().execute.call(context);
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(results[0]).toMatchObject({ json: { id: 0 }, pairedItem: 0 });
+		expect(results[0].error?.message).toContain('HTTP 401');
+		expect(results[1]).toEqual({ json: response, pairedItem: 1 });
 	});
 });

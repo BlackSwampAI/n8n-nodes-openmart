@@ -12,11 +12,11 @@ Distribution is unavailable. There is no supported public installation path for 
 
 ## Compatibility
 
-| Surface             | Tested baseline                          | Notes                                                                                                |
-| ------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| n8n                 | Package-load smoke only                  | No representative editor or real-n8n execution has been performed.                                   |
-| Openmart API        | Documentation reviewed September 6, 2026 | No API key was configured and no live request was made.                                              |
-| Node.js development | 22.22.0 and 24                           | Repository CI targets both versions; local results are recorded in [testing notes](docs/testing.md). |
+| Surface             | Tested baseline                          | Notes                                                                                                   |
+| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| n8n                 | 2.37.10                                  | Disposable server metadata confirmed discovery and icon URLs; no visual editor execution was performed. |
+| Openmart API        | Documentation reviewed September 6, 2026 | No API key was configured and no live request was made.                                                 |
+| Node.js development | 22.22.0 and 24                           | Repository CI targets both versions; local results are recorded in [testing notes](docs/testing.md).    |
 
 ## Credentials
 
@@ -34,11 +34,14 @@ No Business Search, business retrieval, people search, batch, or task operation 
 
 Add the Openmart node, select **Account → Get Credit Balance**, and attach an Openmart API credential. Each input item produces one provider response and retains item pairing.
 
+Balance requests run sequentially. Rate limits, Openmart HTTP 500–504 responses, and recognized network/timeouts are retried up to three total attempts with bounded delay; permanent validation, authentication, credit, permission, and missing-route errors are not retried. With **Continue On Fail**, each error remains paired to its originating input.
+
 ## Troubleshooting
 
 - Confirm the API key is current and copied without surrounding whitespace.
 - HTTP 401 indicates an unknown or invalid key according to the reviewed Openmart documentation.
 - A zero balance is a valid authenticated response, not an authentication failure.
+- HTTP 402 indicates a credit-limit problem; HTTP 403 indicates permission or endpoint entitlement; HTTP 429 or 500–504 may still fail after bounded retries.
 - Report reproducible defects in [GitHub Issues](https://github.com/BlackSwampAI/n8n-nodes-openmart/issues) without including secrets.
 
 ## Resources

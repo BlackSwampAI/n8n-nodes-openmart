@@ -1,13 +1,11 @@
 import type {
-	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
-
-const API_ORIGIN = 'https://api.openmart.ai';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { OPENMART_API_ORIGIN, openmartRequest, parseCreditBalance } from './shared/request';
 
 export class Openmart implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,12 +54,24 @@ export class Openmart implements INodeType {
 		const results: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const response = await this.helpers.httpRequestWithAuthentication.call(this, 'openmartApi', {
-				method: 'GET',
-				url: `${API_ORIGIN}/api/v2/credit-balance`,
-				json: true,
-			});
-			results.push({ json: response as IDataObject, pairedItem: itemIndex });
+			try {
+				const response = await openmartRequest({
+					request: (credentialType, options) =>
+						this.helpers.httpRequestWithAuthentication.call(this, credentialType, options),
+					operation: 'Get Credit Balance',
+					options: {
+						method: 'GET',
+						url: `${OPENMART_API_ORIGIN}/api/v2/credit-balance`,
+						json: true,
+					},
+					retryMode: 'safe-read',
+				});
+				results.push({ json: parseCreditBalance(response), pairedItem: itemIndex });
+			} catch (error) {
+				const nodeError = new NodeOperationError(this.getNode(), error as Error, { itemIndex });
+				if (!this.continueOnFail()) throw nodeError;
+				results.push({ json: items[itemIndex].json, error: nodeError, pairedItem: itemIndex });
+			}
 		}
 
 		return [results];
