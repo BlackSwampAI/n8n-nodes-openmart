@@ -1,21 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { Openmart } from '../nodes/Openmart/Openmart.node';
 
-import { parseLinkHeader } from '../nodes/GithubIssues/shared/utils';
-
-describe('parseLinkHeader', () => {
-	it('maps quoted and unquoted link relations', () => {
-		expect(
-			parseLinkHeader(
-				'<https://api.github.com/issues?page=2>; rel="next", <https://api.github.com/issues?page=4>; rel=last',
-			),
-		).toEqual({
-			next: 'https://api.github.com/issues?page=2',
-			last: 'https://api.github.com/issues?page=4',
-		});
-	});
-
-	it('returns an empty map for absent or malformed headers', () => {
-		expect(parseLinkHeader()).toEqual({});
-		expect(parseLinkHeader('not-a-link')).toEqual({});
+describe('Openmart fixed transport surface', () => {
+	it('does not expose an arbitrary base URL', () => {
+		const description = new Openmart().description;
+		expect(description.properties.map(({ name }) => name)).toEqual(['resource', 'operation']);
+		expect(JSON.stringify(description)).not.toContain('baseUrl');
 	});
 });

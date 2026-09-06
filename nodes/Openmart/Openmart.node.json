@@ -1,0 +1,18 @@
+{
+	"node": "@blackswampai/n8n-nodes-openmart.openmart",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Sales"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/BlackSwampAI/n8n-nodes-openmart#credentials"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/BlackSwampAI/n8n-nodes-openmart"
+			}
+		]
+	}
+}

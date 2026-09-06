@@ -2,19 +2,20 @@
 // eslint-disable-next-line @n8n/community-nodes/no-restricted-imports
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
+import { loadBrandingDocument } from '../scripts/release-check.mjs';
 
 const read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-describe('raw template safety and tooling', () => {
-	it('is private and keeps examples explicitly registered', async () => {
+describe('generated package safety and tooling', () => {
+	it('uses final identity and registers only Openmart', async () => {
 		const packageJson = JSON.parse(await read('package.json')) as {
-			private?: boolean;
+			name: string;
 			packageManager?: string;
 			engines: { node: string };
 			devDependencies: Record<string, string>;
 			n8n: { nodes: string[]; credentials: string[] };
 		};
-		expect(packageJson.private).toBe(true);
+		expect(packageJson.name).toBe('@blackswampai/n8n-nodes-openmart');
 		expect(packageJson.packageManager).toBe('npm@11.19.0');
 		expect(packageJson.engines.node).toBe('>=22.22.0');
 		expect(packageJson.devDependencies).toMatchObject({
@@ -26,14 +27,8 @@ describe('raw template safety and tooling', () => {
 			typescript: '5.9.3',
 			vitest: '4.1.11',
 		});
-		expect(packageJson.n8n.nodes).toEqual([
-			'dist/nodes/GithubIssues/GithubIssues.node.js',
-			'dist/nodes/Example/Example.node.js',
-		]);
-		expect(packageJson.n8n.credentials).toEqual([
-			'dist/credentials/GithubIssuesApi.credentials.js',
-			'dist/credentials/GithubIssuesOAuth2Api.credentials.js',
-		]);
+		expect(packageJson.n8n.nodes).toEqual(['dist/nodes/Openmart/Openmart.node.js']);
+		expect(packageJson.n8n.credentials).toEqual(['dist/credentials/OpenmartApi.credentials.js']);
 	});
 
 	it('uses strict TypeScript and Vitest tests', async () => {
@@ -58,11 +53,10 @@ describe('raw template safety and tooling', () => {
 		expect(migrations).toContain('Generated repositories do not inherit later template changes');
 	});
 
-	it('requires generated repositories to finalize documentation templates', async () => {
-		const [releaseCheck, readme, readmeTemplate] = await Promise.all([
+	it('has finalized generated documentation', async () => {
+		const [releaseCheck, readme] = await Promise.all([
 			read('scripts/release-check.mjs'),
 			read('README.md'),
-			read('README_TEMPLATE.md'),
 		]);
 		for (const path of ['docs/api-matrix.md', 'docs/testing.md', 'docs/branding.md']) {
 			expect(releaseCheck).toContain(path);
@@ -71,11 +65,8 @@ describe('raw template safety and tooling', () => {
 		expect(releaseCheck).toContain('still contains template placeholders');
 		expect(releaseCheck).toContain('remove template source document');
 		expect(releaseCheck).toContain('raw template must retain');
-		expect(readmeTemplate).toContain('install-verified-community-nodes/');
-		expect(readmeTemplate).toContain('installation-and-management/gui-installation/');
-		expect(readmeTemplate).toContain('Private/unavailable:');
-		expect(readmeTemplate).toContain('https://blackswampai.com/n8n-nodes/<PACKAGE_SLUG>/');
-		expect(readmeTemplate).not.toContain('/community-nodes/installation/');
+		expect(readme).toContain('Distribution is unavailable');
+		expect(readme).toContain('https://blackswampai.com/n8n-nodes/openmart/');
 	});
 
 	it('keeps release and publish safeguards', async () => {
@@ -124,8 +115,28 @@ describe('raw template safety and tooling', () => {
 		expect(await read('scripts/node-load-smoke.mjs')).toContain(
 			'Packaged SVG icon needs a usable viewBox',
 		);
-		expect(await read('docs/BRANDING_TEMPLATE.md')).toContain(
-			'Creator Portal card version and logo',
-		);
+		expect(await read('docs/branding.md')).toContain('Creator Portal card version and logo');
+	});
+
+	it('selects branding guidance for both document lifecycle paths', async () => {
+		const files = new Map([
+			['/fixture/docs/BRANDING_TEMPLATE.md', 'raw guidance'],
+			['/fixture/docs/branding.md', 'generated guidance'],
+		]);
+		const exists = (path: Parameters<typeof import('node:fs').existsSync>[0]) =>
+			files.has(String(path));
+		const load = (path: string) => files.get(path) ?? '';
+		expect(loadBrandingDocument(true, '/fixture', exists, load)).toEqual({
+			path: 'docs/BRANDING_TEMPLATE.md',
+			contents: 'raw guidance',
+		});
+		expect(loadBrandingDocument(false, '/fixture', exists, load)).toEqual({
+			path: 'docs/branding.md',
+			contents: 'generated guidance',
+		});
+		expect(loadBrandingDocument(false, '/missing', () => false, load)).toEqual({
+			path: 'docs/branding.md',
+			contents: '',
+		});
 	});
 });
