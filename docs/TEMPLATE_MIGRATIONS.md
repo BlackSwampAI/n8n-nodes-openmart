@@ -4,6 +4,11 @@ GitHub creates a new repository from a snapshot of this template. Generated repo
 
 The current reusable baseline and canonical source repository are recorded in `.blackswamp/template.json`. Keep that file after generation so maintainers can compare their adopted version with future template releases. Updating the marker alone is not a migration: review the template diff, adopt each relevant script, workflow, test, or documentation change, run every local gate, and then update the marker in the generated repository.
 
+## Project adaptations
+
+- Openmart Batch 1 specializes the 2.0.1 snapshot without changing its baseline marker.
+- The release audit now chooses `docs/BRANDING_TEMPLATE.md` in raw-template mode and `docs/branding.md` in generated-project mode. Both remain required and retain the same fail-closed branding guidance checks.
+
 ## 2.0.1
 
 - Split immutable npm publication from post-publication registry/provenance verification. A failed verifier can now be rerun without attempting to republish an existing version.

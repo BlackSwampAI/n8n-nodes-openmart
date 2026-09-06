@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GithubIssues } from '../nodes/GithubIssues/GithubIssues.node';
+import { Openmart } from '../nodes/Openmart/Openmart.node';
 import {
 	assertRequiredControls,
 	normalizeResourceLocator,
@@ -7,21 +7,17 @@ import {
 } from './helpers/operation-contract';
 
 describe('reusable node operation contracts', () => {
-	it('checks required controls against actual display conditions', () => {
-		const description = new GithubIssues().description;
+	it('checks the actual Account operation display contract', () => {
+		const description = new Openmart().description;
 		expect(() =>
 			assertRequiredControls(description, {
-				resource: 'issue',
-				operation: 'create',
-				requiredControls: ['title'],
+				resource: 'account',
+				operation: 'getCreditBalance',
+				requiredControls: [],
 			}),
 		).not.toThrow();
-		const title = description.properties.find(({ name }) => name === 'title');
-		expect(title?.required).toBe(true);
-		expect(title?.displayOptions?.show).toEqual({
-			resource: ['issue'],
-			operation: ['create'],
-		});
+		const operation = description.properties.find(({ name }) => name === 'operation');
+		expect(operation?.displayOptions?.show).toEqual({ resource: ['account'] });
 	});
 
 	it('normalizes manual and list-mode resource locator values', () => {

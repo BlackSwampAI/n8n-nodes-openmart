@@ -20,6 +20,17 @@ const hasPlaceholder = (value) =>
 		/\b(?:TODO|CHANGEME)\b/i.test(value) ||
 		/YOUR[-_][A-Z0-9_-]+/.test(value));
 
+export const loadBrandingDocument = (
+	templateMode,
+	rootDirectory = root,
+	fileExists = existsSync,
+	readDocument = (path) => readFileSync(path, 'utf8'),
+) => {
+	const path = templateMode ? 'docs/BRANDING_TEMPLATE.md' : 'docs/branding.md';
+	const absolutePath = resolve(rootDirectory, path);
+	return { path, contents: fileExists(absolutePath) ? readDocument(absolutePath) : '' };
+};
+
 const packageJson = JSON.parse(read('package.json'));
 const readme = read('README.md');
 const releasing = read('RELEASING.md');
@@ -27,7 +38,6 @@ const sourceScanner = read('scripts/scan-source.mjs');
 const publishedScanner = read('scripts/scan-published.mjs');
 const publishWorkflow = read('.github/workflows/publish.yml');
 const ciWorkflow = read('.github/workflows/ci.yml');
-const brandingTemplate = read('docs/BRANDING_TEMPLATE.md');
 let origin = '';
 try {
 	const dotGit = resolve(root, '.git');
@@ -44,6 +54,8 @@ try {
 	);
 }
 const isTemplateMode = origin === TEMPLATE_ORIGIN;
+const { path: brandingDocumentPath, contents: brandingDocument } =
+	loadBrandingDocument(isTemplateMode);
 
 for (const path of [
 	'LICENSE.md',
@@ -129,7 +141,8 @@ for (const guidance of [
 	'packed tarball',
 	'Creator Portal card version and logo',
 ])
-	if (!brandingTemplate.includes(guidance)) fail(`branding guidance is missing: ${guidance}`);
+	if (!brandingDocument.includes(guidance))
+		fail(`${brandingDocumentPath} branding guidance is missing: ${guidance}`);
 if (!/timeout-minutes:\s*20/.test(ciWorkflow)) fail('CI must have a 20-minute job timeout');
 if (!/timeout-minutes:\s*30/.test(publishWorkflow))
 	fail('publish must have a 30-minute job timeout');
