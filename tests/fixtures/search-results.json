@@ -1,0 +1,24 @@
+[
+	{
+		"id": "biz_101",
+		"content": {
+			"business_name": "Lakeview Dental",
+			"root_domain": "lakeview.example",
+			"website_url": "https://lakeview.example",
+			"store_phones": null
+		},
+		"match_score": 0.91,
+		"match_highlights": ["Independent dental practice"],
+		"cursor": [0.91, "store_101"]
+	},
+	{
+		"id": "biz_102",
+		"content": {
+			"business_name": "Northside Dental",
+			"root_domain": null,
+			"website_url": null,
+			"store_phones": ["+1-555-0102"]
+		},
+		"match_score": null
+	}
+]

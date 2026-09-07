@@ -20,6 +20,22 @@ describe('reusable node operation contracts', () => {
 		expect(operation?.displayOptions?.show).toEqual({ resource: ['account'] });
 	});
 
+	it('checks the required Business Search query against actual display conditions', () => {
+		const description = new Openmart().description;
+		expect(() =>
+			assertRequiredControls(description, {
+				resource: 'business',
+				operation: 'search',
+				requiredControls: ['query'],
+			}),
+		).not.toThrow();
+		const query = description.properties.find(({ name }) => name === 'query');
+		expect(query?.displayOptions?.show).toEqual({
+			resource: ['business'],
+			operation: ['search'],
+		});
+	});
+
 	it('normalizes manual and list-mode resource locator values', () => {
 		expect(normalizeResourceLocator(' manual-id ', 'Example')).toBe('manual-id');
 		expect(normalizeResourceLocator({ mode: 'list', value: ' listed-id ' }, 'Example')).toBe(

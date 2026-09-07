@@ -20,9 +20,19 @@ n8n augmented the metadata with its own **Custom API Call** entries and a `CUSTO
 
 Package gates build the TypeScript, run the pinned official source scanner, inspect the dry-run package boundary, load registrations, and install the packed artifact in an isolated consumer. These checks and the server metadata smoke do not constitute a live Openmart test.
 
+## Batch 3 Business Search evidence
+
+Synthetic fixtures based on the documented top-level array cover multiple results, empty results, optional/null content fields, match metadata, and the two-element cursor value retained on provider records. Tests exercise the minimal request, one-element location array, top-level initial filters, defaults, trimmed expression-resolved values, 500-character boundary, invalid query/limit/minimum-locations before transport, one-to-many input pairing, atomic response validation, per-input continuation, and no retry after a transient POST failure.
+
+A fresh disposable user folder on the existing functional pinned n8n `2.37.10` cache reached a healthy server and completed disposable owner setup. Authenticated source metadata exposed `CUSTOM.openmart` with Account and Business resources, Account/Get Credit Balance, and Business/Search. Search metadata showed required Query; Limit (`resultLimit`) default 10 with minimum 1 and maximum 100; and Location and Filters restricted to Business/Search by display conditions. The `openmartApi` credential was present. n8n also injected its own **Custom API Call** options, which are host behavior and are not advertised by the package source. Both served icon URLs matched the tracked assets exactly by SHA-256. The instance was stopped and its exact temporary folder was deleted.
+
+This actual-n8n check demonstrates discovery and metadata serving, not browser/editor rendering or node execution. It used no Openmart key and made no Openmart request.
+
+No search request was sent to Openmart. The exact accepted filter combinations, account entitlement, credit effect, result variability, and performance remain live gaps. `estimate_total:false` fixes the documented top-level array shape for this batch; pagination and cursor input are not implemented.
+
 ## Live testing status
 
-No Openmart API key is configured. No live Openmart request, paid operation, real prospect lookup, browser/editor interaction, visual icon theme inspection, balance execution inside n8n, or Creator Portal inspection has been performed. A small harmless live credit-balance request and representative actual-n8n execution remain required before release and require explicit authorization.
+No Openmart API key is configured. No live Openmart request, paid operation, real prospect lookup, browser/editor interaction, visual icon theme inspection, balance or search execution inside n8n, or Creator Portal inspection has been performed. Live checks require explicit authorization.
 
 ## Safety
 
