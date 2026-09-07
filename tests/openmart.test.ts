@@ -4,20 +4,33 @@ import { OpenmartApi } from '../credentials/OpenmartApi.credentials';
 import { Openmart } from '../nodes/Openmart/Openmart.node';
 
 describe('Openmart node contract', () => {
-	it('advertises only implemented Account and Business operations and wires its credential', () => {
+	it('advertises only implemented retrieval and Search operations and wires its credential', () => {
 		const description = new Openmart().description;
 		expect(description.credentials).toEqual([{ name: 'openmartApi', required: true }]);
 		const resource = description.properties.find(({ name }) => name === 'resource');
 		const operations = description.properties.filter(({ name }) => name === 'operation');
 		expect(resource?.options).toEqual([
 			{ name: 'Account', value: 'account' },
+			{ name: 'Batch', value: 'batch' },
 			{ name: 'Business', value: 'business' },
+			{ name: 'Task', value: 'task' },
 		]);
-		expect(operations[0]?.options).toEqual([
+		const operationFor = (resourceName: string) =>
+			operations.find(({ displayOptions }) =>
+				displayOptions?.show?.resource?.includes(resourceName),
+			);
+		expect(operationFor('account')?.options).toEqual([
 			expect.objectContaining({ name: 'Get Credit Balance', value: 'getCreditBalance' }),
 		]);
-		expect(operations[1]?.options).toEqual([
+		expect(operationFor('batch')?.options).toEqual([
+			expect.objectContaining({ name: 'Get Status', value: 'getStatus' }),
+			expect.objectContaining({ name: 'Get Task IDs', value: 'getTaskIds' }),
+		]);
+		expect(operationFor('business')?.options).toEqual([
 			expect.objectContaining({ name: 'Search', value: 'search' }),
+		]);
+		expect(operationFor('task')?.options).toEqual([
+			expect.objectContaining({ name: 'Get', value: 'get' }),
 		]);
 	});
 

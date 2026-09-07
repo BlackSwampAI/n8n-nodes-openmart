@@ -10,7 +10,7 @@ The opt-in test guard is exactly `OPENMART_N8N_PACKAGE_PATH`; ordinary `npm test
 OPENMART_N8N_PACKAGE_PATH=/tmp/<disposable>/node_modules/n8n npm test -- --run tests/openmart-n8n-helper.test.ts
 ```
 
-The actual `httpRequestWithAuthentication` path applied the fake credential (`Authorization: Bearer fake-loopback-key`) but the loopback server received an empty GET body. This confirms n8n 2.37.10 drops the documented Business Get JSON-array body. It does not prove live Openmart behavior. Business Get is blocked until Openmart documents a compatible alternative.
+The actual `httpRequestWithAuthentication` path applied the fake credential (`Authorization: Bearer fake-loopback-key`) but the loopback server received an empty GET body. This confirms the recommended n8n 2.37.10 path drops the documented Business Get JSON-array body. Deprecated legacy transport preserved it in loopback, so the unresolved issue is a supported-path compatibility decision rather than universal transport impossibility. It does not prove live Openmart behavior.
 
 ## Disposable n8n 2.37.10 smoke
 
@@ -29,6 +29,14 @@ A fresh disposable user folder on the existing functional pinned n8n `2.37.10` c
 This actual-n8n check demonstrates discovery and metadata serving, not browser/editor rendering or node execution. It used no Openmart key and made no Openmart request.
 
 No search request was sent to Openmart. The exact accepted filter combinations, account entitlement, credit effect, result variability, and performance remain live gaps. `estimate_total:false` fixes the documented top-level array shape for this batch; pagination and cursor input are not implemented.
+
+## Batch 4 asynchronous retrieval evidence
+
+Synthetic fixtures and strict tests cover Batch/Get Status, Batch/Get Task IDs, and Task/Get metadata and execution. They verify trimmed IDs encoded as one path segment, normalized requested `batch_id` correlation on status output, optional non-required status visibility and trimmed omission/mapping, GET requests without bodies, safe-read retry behavior, preserved unknown fields, atomic malformed-response rejection, empty task-ID arrays, one-to-many and multiple-input pairing, Continue On Fail, and sanitized errors. Task Get intentionally permits optional, null, empty, or missing result data pending live evidence. There is no internal polling loop.
+
+A fresh disposable user folder on cached pinned n8n `2.37.10` reached healthy loopback status and completed disposable owner setup. Authenticated type metadata exposed credential `openmartApi`; Account, Batch, Business, and Task resources; Batch/Get Status (`getStatus`) and Batch/Get Task IDs (`getTaskIds`); Task/Get (`get`); required Batch ID for both Batch operations; optional Status only for Batch/Get Task IDs; and required Task ID only for Task/Get. n8n injected host-owned `__CUSTOM_API_CALL__` resource/operation entries that are absent from the package's advertised source surface. The server was stopped and the exact temporary script and state were deleted.
+
+This actual-n8n observation proves health, discovery, and served metadata only. There was no browser/editor visual inspection or node execution. No Openmart API key was configured and no Openmart request, live read, or paid call occurred. Actual task states, status filtering, entitlements, partial failures, tracking IDs, and missing-result behavior remain unverified.
 
 ## Live testing status
 
