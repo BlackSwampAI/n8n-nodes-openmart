@@ -4,14 +4,20 @@ import { OpenmartApi } from '../credentials/OpenmartApi.credentials';
 import { Openmart } from '../nodes/Openmart/Openmart.node';
 
 describe('Openmart node contract', () => {
-	it('advertises only Account Get Credit Balance and wires its credential', () => {
+	it('advertises only implemented Account and Business operations and wires its credential', () => {
 		const description = new Openmart().description;
 		expect(description.credentials).toEqual([{ name: 'openmartApi', required: true }]);
 		const resource = description.properties.find(({ name }) => name === 'resource');
-		const operation = description.properties.find(({ name }) => name === 'operation');
-		expect(resource?.options).toEqual([{ name: 'Account', value: 'account' }]);
-		expect(operation?.options).toEqual([
+		const operations = description.properties.filter(({ name }) => name === 'operation');
+		expect(resource?.options).toEqual([
+			{ name: 'Account', value: 'account' },
+			{ name: 'Business', value: 'business' },
+		]);
+		expect(operations[0]?.options).toEqual([
 			expect.objectContaining({ name: 'Get Credit Balance', value: 'getCreditBalance' }),
+		]);
+		expect(operations[1]?.options).toEqual([
+			expect.objectContaining({ name: 'Search', value: 'search' }),
 		]);
 	});
 
@@ -42,6 +48,7 @@ describe('Openmart node contract', () => {
 		const request = vi.fn().mockResolvedValue(response);
 		const context = {
 			getInputData: () => input,
+			getNodeParameter: (name: string) => (name === 'resource' ? 'account' : 'getCreditBalance'),
 			getNode: () => ({
 				name: 'Openmart',
 				type: 'openmart',
@@ -77,6 +84,7 @@ describe('Openmart node contract', () => {
 		const request = vi.fn().mockResolvedValue({ balance: 0, period_start: 'not-a-date' });
 		const context = {
 			getInputData: () => [{ json: {} }],
+			getNodeParameter: (name: string) => (name === 'resource' ? 'account' : 'getCreditBalance'),
 			getNode: () => ({
 				name: 'Openmart',
 				type: 'openmart',
@@ -105,6 +113,7 @@ describe('Openmart node contract', () => {
 			.mockResolvedValueOnce(response);
 		const context = {
 			getInputData: () => input,
+			getNodeParameter: (name: string) => (name === 'resource' ? 'account' : 'getCreditBalance'),
 			getNode: () => ({
 				name: 'Openmart',
 				type: 'openmart',
