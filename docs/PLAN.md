@@ -16,9 +16,9 @@ Implement the first page of Business Search only: required query, location, init
 
 Local mocked and package validation is complete; live Openmart validation remains pending. Pagination and Business Get are explicitly excluded from Batch 3.
 
-## Batch 4 — proposed: shared asynchronous retrieval
+## Batch 4 — complete locally: shared asynchronous retrieval
 
-Implement the release-critical shared retrieval chain: Batch/Get Status, Batch/Get Task IDs, and Task/Get. Validate identifiers, task states, partial/missing results, tracking IDs, pairing, continuation behavior, and sanitized errors. These reads may use bounded safe retries; no paid creation is included in this batch.
+Implemented the release-critical shared retrieval chain: Batch/Get Status, Batch/Get Task IDs, and Task/Get. IDs, status filtering, documented response shapes, pairing, continuation, error sanitation, and bounded safe-read retries have local mocked and package validation. There is no internal polling loop and no paid creation in this batch. Live task states, partial/missing results, and entitlements remain unverified.
 
 ## Batch 5 — proposed: email and contact discovery
 

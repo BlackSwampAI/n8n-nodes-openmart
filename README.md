@@ -1,6 +1,6 @@
 # Openmart for n8n
 
-Use Openmart account and business-search data in n8n workflows. The integration exposes a safe balance lookup and a bounded first-page business search.
+Use Openmart account, business-search, batch, and task data in n8n workflows. The integration exposes a safe balance lookup, bounded first-page business search, and reads for existing asynchronous work.
 
 > This is an independent Black Swamp AI community integration. It is not affiliated with, endorsed by, sponsored by, or maintained by Openmart. Product names and marks belong to their respective owners and are used only to identify compatibility.
 
@@ -28,8 +28,11 @@ Never commit API keys or real prospect data.
 
 - **Account → Get Credit Balance** returns Openmart's `period_start`, `period_end`, and integer `balance` fields without converting credits to currency.
 - **Business → Search** submits a required query with an optional location and initial website/contact/location-count filters, then returns one n8n item per provider business.
+- **Batch → Get Status** returns readiness and progress counts plus the normalized requested `batch_id` for direct chaining.
+- **Batch → Get Task IDs** optionally filters by a free-text status such as `COMPLETED`, then emits one `{task_id,batch_id}` item per returned task for direct chaining.
+- **Task → Get** returns the full provider task envelope, including available result data.
 
-Business retrieval, search pagination, people search, batch, and task operations are not advertised yet.
+Business retrieval, search pagination, polling, and paid creation operations are not advertised yet.
 
 ## Usage
 
@@ -38,6 +41,8 @@ Add the Openmart node, select **Account → Get Credit Balance**, and attach an 
 Balance requests run sequentially. Rate limits, Openmart HTTP 500–504 responses, and recognized network/timeouts are retried up to three total attempts with bounded delay; permanent validation, authentication, credit, permission, and missing-route errors are not retried. With **Continue On Fail**, each error remains paired to its originating input.
 
 Business Search accepts a 1–500 character query and returns only its first page. Limit defaults to 10 and is capped at 100, a conservative cap compatible with documented preview keys even though the general documentation states a maximum of 1000. Country, state, and city are free text; country codes and names are both documented, so the node does not force `US` or `USA`. Search always requests `estimate_total: false`, sends no cursor, and is never retried automatically because its credit effect has not been verified.
+
+Batch and Task reads require an existing ID, process input items sequentially, and use the same bounded safe-read retry policy as balance retrieval. IDs are trimmed and encoded as one URL path segment. The node does not poll: chain Get Status, Get Task IDs, and Task Get explicitly according to workflow needs.
 
 ## Troubleshooting
 

@@ -7,7 +7,12 @@ describe('Openmart fixed transport surface', () => {
 		expect(description.properties.map(({ name }) => name)).toEqual([
 			'resource',
 			'operation',
+			'batchId',
+			'status',
 			'operation',
+			'operation',
+			'operation',
+			'taskId',
 			'query',
 			'resultLimit',
 			'location',

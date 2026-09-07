@@ -16,7 +16,10 @@ describe('reusable node operation contracts', () => {
 				requiredControls: [],
 			}),
 		).not.toThrow();
-		const operation = description.properties.find(({ name }) => name === 'operation');
+		const operation = description.properties.find(
+			({ name, displayOptions }) =>
+				name === 'operation' && displayOptions?.show?.resource?.includes('account'),
+		);
 		expect(operation?.displayOptions?.show).toEqual({ resource: ['account'] });
 	});
 
@@ -34,6 +37,30 @@ describe('reusable node operation contracts', () => {
 			resource: ['business'],
 			operation: ['search'],
 		});
+	});
+
+	it.each([
+		['batch', 'getStatus', 'batchId'],
+		['batch', 'getTaskIds', 'batchId'],
+		['task', 'get', 'taskId'],
+	])('checks required %s/%s controls and visibility', (resource, operation, control) => {
+		const description = new Openmart().description;
+		expect(() =>
+			assertRequiredControls(description, {
+				resource,
+				operation,
+				requiredControls: [control],
+			}),
+		).not.toThrow();
+	});
+
+	it('shows the optional status control only for Batch/Get Task IDs', () => {
+		const status = new Openmart().description.properties.find(({ name }) => name === 'status');
+		expect(status).toMatchObject({
+			name: 'status',
+			displayOptions: { show: { resource: ['batch'], operation: ['getTaskIds'] } },
+		});
+		expect(status?.required).not.toBe(true);
 	});
 
 	it('normalizes manual and list-mode resource locator values', () => {
