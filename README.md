@@ -38,18 +38,18 @@ Business retrieval, search pagination, polling, and paid creation operations are
 
 Add the Openmart node, select **Account → Get Credit Balance**, and attach an Openmart API credential. Each input item produces one provider response and retains item pairing.
 
-Balance requests run sequentially. Rate limits, Openmart HTTP 500–504 responses, and recognized network/timeouts are retried up to three total attempts with bounded delay; permanent validation, authentication, credit, permission, and missing-route errors are not retried. With **Continue On Fail**, each error remains paired to its originating input.
+The node uses n8n's declarative request routing and makes one request per input item. It does not add hidden retries; use n8n's workflow or node retry settings deliberately when appropriate. With **Continue On Fail**, n8n retains errors for their originating inputs.
 
 Business Search accepts a 1–500 character query and returns only its first page. Limit defaults to 10 and is capped at 100, a conservative cap compatible with documented preview keys even though the general documentation states a maximum of 1000. Country, state, and city are free text; country codes and names are both documented, so the node does not force `US` or `USA`. Search always requests `estimate_total: false`, sends no cursor, and is never retried automatically because its credit effect has not been verified.
 
-Batch and Task reads require an existing ID, process input items sequentially, and use the same bounded safe-read retry policy as balance retrieval. IDs are trimmed and encoded as one URL path segment. The node does not poll: chain Get Status, Get Task IDs, and Task Get explicitly according to workflow needs.
+Batch and Task reads require an existing ID. Declarative routing may schedule multiple input-item requests concurrently. IDs are trimmed and encoded as one URL path segment. The node does not poll or retry internally: chain Get Status, Get Task IDs, and Task Get explicitly according to workflow needs.
 
 ## Troubleshooting
 
 - Confirm the API key is current and copied without surrounding whitespace.
 - HTTP 401 indicates an unknown or invalid key according to the reviewed Openmart documentation.
 - A zero balance is a valid authenticated response, not an authentication failure.
-- HTTP 402 indicates a credit-limit problem; HTTP 403 indicates permission or endpoint entitlement; HTTP 429 or 500–504 may still fail after bounded retries.
+- HTTP 402 indicates a credit-limit problem; HTTP 403 indicates permission or endpoint entitlement; HTTP 429 or 500–504 may be suitable for n8n's explicit retry settings on safe reads.
 - Report reproducible defects in [GitHub Issues](https://github.com/BlackSwampAI/n8n-nodes-openmart/issues) without including secrets.
 
 ## Resources

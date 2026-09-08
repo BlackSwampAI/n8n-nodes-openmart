@@ -1,21 +1,17 @@
-import type {
-	IExecuteFunctions,
-	IHttpRequestOptions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import { OPENMART_API_ORIGIN, openmartRequest, parseCreditBalance } from './shared/request';
-import { buildSearchBody, parseSearchResults } from './shared/search';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import {
-	encodedId,
-	optionalStatus,
-	parseBatchStatus,
-	parseTask,
-	parseTaskIds,
-	requiredId,
-} from './shared/tasks';
+	prepareBatchStatus,
+	prepareSearch,
+	prepareTask,
+	prepareTaskIds,
+	receiveBatchStatus,
+	receiveCreditBalance,
+	receiveSearch,
+	receiveTask,
+	receiveTaskIds,
+} from './actions/routing';
+import { OPENMART_API_ORIGIN } from './shared/request';
 
 export class Openmart implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,6 +27,12 @@ export class Openmart implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'openmartApi', required: true }],
+		requestDefaults: {
+			baseURL: OPENMART_API_ORIGIN,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+		},
 		properties: [
 			{
 				displayName: 'Resource',
@@ -57,12 +59,22 @@ export class Openmart implements INodeType {
 						value: 'getStatus',
 						description: 'Get progress counts and readiness for an existing batch',
 						action: 'Get batch status',
+						routing: {
+							request: { method: 'GET', url: '/api/v1/task/batch' },
+							send: { preSend: [prepareBatchStatus] },
+							output: { postReceive: [receiveBatchStatus] },
+						},
 					},
 					{
 						name: 'Get Task IDs',
 						value: 'getTaskIds',
 						description: 'Get task IDs from an existing batch',
 						action: 'Get tasks from a batch',
+						routing: {
+							request: { method: 'GET', url: '/api/v1/task/batch' },
+							send: { preSend: [prepareTaskIds] },
+							output: { postReceive: [receiveTaskIds] },
+						},
 					},
 				],
 				default: 'getStatus',
@@ -98,6 +110,10 @@ export class Openmart implements INodeType {
 						value: 'getCreditBalance',
 						description: 'Get the current credit balance and billing period',
 						action: 'Get credit balance',
+						routing: {
+							request: { method: 'GET', url: '/api/v2/credit-balance' },
+							output: { postReceive: [receiveCreditBalance] },
+						},
 					},
 				],
 				default: 'getCreditBalance',
@@ -114,6 +130,11 @@ export class Openmart implements INodeType {
 						value: 'search',
 						description: 'Find businesses matching a query',
 						action: 'Search businesses',
+						routing: {
+							request: { method: 'POST', url: '/api/v1/search' },
+							send: { preSend: [prepareSearch] },
+							output: { postReceive: [receiveSearch] },
+						},
 					},
 				],
 				default: 'search',
@@ -130,6 +151,11 @@ export class Openmart implements INodeType {
 						value: 'get',
 						description: 'Get an existing task and its result data',
 						action: 'Get a task',
+						routing: {
+							request: { method: 'GET', url: '/api/v1/task' },
+							send: { preSend: [prepareTask] },
+							output: { postReceive: [receiveTask] },
+						},
 					},
 				],
 				default: 'get',
@@ -213,111 +239,4 @@ export class Openmart implements INodeType {
 			},
 		],
 	};
-
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const results: INodeExecutionData[] = [];
-
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
-				const resource = this.getNodeParameter('resource', itemIndex) as string;
-				const operation = this.getNodeParameter('operation', itemIndex) as string;
-				const request = (credentialType: string, options: IHttpRequestOptions) =>
-					this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
-				if (resource === 'batch' && (operation === 'getStatus' || operation === 'getTaskIds')) {
-					const batchId = requiredId(this.getNodeParameter('batchId', itemIndex), 'Batch ID');
-					const path = encodedId(batchId, 'Batch ID');
-					const status =
-						operation === 'getTaskIds'
-							? optionalStatus(this.getNodeParameter('status', itemIndex, ''))
-							: undefined;
-					const response = await openmartRequest({
-						request,
-						operation: operation === 'getStatus' ? 'Get Batch Status' : 'Get Task IDs',
-						options: {
-							method: 'GET',
-							url: `${OPENMART_API_ORIGIN}/api/v1/task/batch/${path}/${operation === 'getStatus' ? 'status' : 'task_ids'}`,
-							...(status ? { qs: { status } } : {}),
-							json: true,
-						},
-						retryMode: 'safe-read',
-					});
-					if (operation === 'getStatus') {
-						results.push({
-							json: { ...parseBatchStatus(response), batch_id: batchId },
-							pairedItem: itemIndex,
-						});
-					} else {
-						for (const taskId of parseTaskIds(response))
-							results.push({ json: { task_id: taskId, batch_id: batchId }, pairedItem: itemIndex });
-					}
-					continue;
-				}
-				if (resource === 'task' && operation === 'get') {
-					const taskId = encodedId(this.getNodeParameter('taskId', itemIndex), 'Task ID');
-					const response = await openmartRequest({
-						request,
-						operation: 'Get Task',
-						options: {
-							method: 'GET',
-							url: `${OPENMART_API_ORIGIN}/api/v1/task/${taskId}`,
-							json: true,
-						},
-						retryMode: 'safe-read',
-					});
-					results.push({ json: parseTask(response), pairedItem: itemIndex });
-					continue;
-				}
-				if (resource === 'business' && operation === 'search') {
-					const body = buildSearchBody({
-						query: this.getNodeParameter('query', itemIndex),
-						limit: this.getNodeParameter('resultLimit', itemIndex, 10),
-						location: this.getNodeParameter('location', itemIndex, {}),
-						filters: this.getNodeParameter('filters', itemIndex, {}),
-					});
-					const response = await openmartRequest({
-						request,
-						operation: 'Search',
-						options: {
-							method: 'POST',
-							url: `${OPENMART_API_ORIGIN}/api/v1/search`,
-							body,
-							json: true,
-						},
-						retryMode: 'none',
-					});
-					for (const business of parseSearchResults(response))
-						results.push({ json: business, pairedItem: itemIndex });
-					continue;
-				}
-				if (resource !== 'account' || operation !== 'getCreditBalance') {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Openmart operation is not supported: ${resource}/${operation}.`,
-						{ itemIndex },
-					);
-				}
-				const response = await openmartRequest({
-					request,
-					operation: 'Get Credit Balance',
-					options: {
-						method: 'GET',
-						url: `${OPENMART_API_ORIGIN}/api/v2/credit-balance`,
-						json: true,
-					},
-					retryMode: 'safe-read',
-				});
-				results.push({ json: parseCreditBalance(response), pairedItem: itemIndex });
-			} catch (error) {
-				const nodeError =
-					error instanceof NodeOperationError
-						? error
-						: new NodeOperationError(this.getNode(), error as Error, { itemIndex });
-				if (!this.continueOnFail()) throw nodeError;
-				results.push({ json: items[itemIndex].json, error: nodeError, pairedItem: itemIndex });
-			}
-		}
-
-		return [results];
-	}
 }

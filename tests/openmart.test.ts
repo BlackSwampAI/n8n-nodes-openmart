@@ -1,37 +1,76 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { describe, expect, it, vi } from 'vitest';
+import type { IExecuteSingleFunctions, IN8nHttpFullResponse } from 'n8n-workflow';
+import { describe, expect, it } from 'vitest';
 import { OpenmartApi } from '../credentials/OpenmartApi.credentials';
 import { Openmart } from '../nodes/Openmart/Openmart.node';
+import {
+	prepareBatchStatus,
+	prepareSearch,
+	prepareTask,
+	prepareTaskIds,
+	receiveBatchStatus,
+	receiveCreditBalance,
+	receiveSearch,
+	receiveTask,
+	receiveTaskIds,
+} from '../nodes/Openmart/actions/routing';
+
+const response = (body: unknown, statusCode = 200) =>
+	({ body, statusCode, headers: {} }) as IN8nHttpFullResponse;
 
 describe('Openmart node contract', () => {
-	it('advertises only implemented retrieval and Search operations and wires its credential', () => {
+	it('advertises exactly five routed operations and fixed production transport', () => {
 		const description = new Openmart().description;
 		expect(description.credentials).toEqual([{ name: 'openmartApi', required: true }]);
-		const resource = description.properties.find(({ name }) => name === 'resource');
-		const operations = description.properties.filter(({ name }) => name === 'operation');
-		expect(resource?.options).toEqual([
-			{ name: 'Account', value: 'account' },
-			{ name: 'Batch', value: 'batch' },
-			{ name: 'Business', value: 'business' },
-			{ name: 'Task', value: 'task' },
+		expect(description.requestDefaults).toEqual({
+			baseURL: 'https://api.openmart.ai',
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+		});
+		const advertised = description.properties
+			.filter(({ name }) => name === 'operation')
+			.flatMap(({ options }) => options ?? []);
+		expect(advertised.map((option) => ('value' in option ? option.value : undefined))).toEqual([
+			'getStatus',
+			'getTaskIds',
+			'getCreditBalance',
+			'search',
+			'get',
 		]);
-		const operationFor = (resourceName: string) =>
-			operations.find(({ displayOptions }) =>
-				displayOptions?.show?.resource?.includes(resourceName),
-			);
-		expect(operationFor('account')?.options).toEqual([
-			expect.objectContaining({ name: 'Get Credit Balance', value: 'getCreditBalance' }),
-		]);
-		expect(operationFor('batch')?.options).toEqual([
-			expect.objectContaining({ name: 'Get Status', value: 'getStatus' }),
-			expect.objectContaining({ name: 'Get Task IDs', value: 'getTaskIds' }),
-		]);
-		expect(operationFor('business')?.options).toEqual([
-			expect.objectContaining({ name: 'Search', value: 'search' }),
-		]);
-		expect(operationFor('task')?.options).toEqual([
-			expect.objectContaining({ name: 'Get', value: 'get' }),
-		]);
+		for (const operation of advertised) expect(operation).toHaveProperty('routing.request');
+		const routeByValue = Object.fromEntries(
+			advertised.map((option) => [
+				'value' in option ? option.value : '',
+				'routing' in option ? option.routing : undefined,
+			]),
+		);
+		expect(routeByValue).toEqual({
+			getStatus: {
+				request: { method: 'GET', url: '/api/v1/task/batch' },
+				send: { preSend: [prepareBatchStatus] },
+				output: { postReceive: [receiveBatchStatus] },
+			},
+			getTaskIds: {
+				request: { method: 'GET', url: '/api/v1/task/batch' },
+				send: { preSend: [prepareTaskIds] },
+				output: { postReceive: [receiveTaskIds] },
+			},
+			getCreditBalance: {
+				request: { method: 'GET', url: '/api/v2/credit-balance' },
+				output: { postReceive: [receiveCreditBalance] },
+			},
+			search: {
+				request: { method: 'POST', url: '/api/v1/search' },
+				send: { preSend: [prepareSearch] },
+				output: { postReceive: [receiveSearch] },
+			},
+			get: {
+				request: { method: 'GET', url: '/api/v1/task' },
+				send: { preSend: [prepareTask] },
+				output: { postReceive: [receiveTask] },
+			},
+		});
+		expect(new Openmart()).not.toHaveProperty('execute');
 	});
 
 	it('configures password Bearer credentials and harmless balance testing', () => {
@@ -48,99 +87,29 @@ describe('Openmart node contract', () => {
 			url: '/api/v2/credit-balance',
 			method: 'GET',
 		});
-		expect(credential.test.rules).toBeUndefined();
 	});
 
-	it('returns a mocked zero balance unchanged and paired to its input', async () => {
-		const input: INodeExecutionData[] = [{ json: { request: 'one' } }];
-		const response = {
+	it('validates balance success and sanitized failures', async () => {
+		const context = {} as IExecuteSingleFunctions;
+		const balance = {
 			period_start: '2026-09-01T00:00:00Z',
 			period_end: '2026-10-01T00:00:00Z',
 			balance: 0,
 		};
-		const request = vi.fn().mockResolvedValue(response);
-		const context = {
-			getInputData: () => input,
-			getNodeParameter: (name: string) => (name === 'resource' ? 'account' : 'getCreditBalance'),
-			getNode: () => ({
-				name: 'Openmart',
-				type: 'openmart',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			}),
-			continueOnFail: () => false,
-			helpers: { httpRequestWithAuthentication: request },
-		} as unknown as IExecuteFunctions;
-
-		await expect(new Openmart().execute.call(context)).resolves.toEqual([
-			[{ json: response, pairedItem: 0 }],
+		await expect(receiveCreditBalance.call(context, [], response(balance))).resolves.toEqual([
+			{ json: balance },
 		]);
-		expect(request).toHaveBeenCalledWith('openmartApi', {
-			method: 'GET',
-			url: 'https://api.openmart.ai/api/v2/credit-balance',
-			json: true,
-		});
-	});
-
-	it('handles empty input without transport', async () => {
-		const request = vi.fn();
-		const context = {
-			getInputData: () => [],
-			helpers: { httpRequestWithAuthentication: request },
-		} as unknown as IExecuteFunctions;
-		await expect(new Openmart().execute.call(context)).resolves.toEqual([[]]);
-		expect(request).not.toHaveBeenCalled();
-	});
-
-	it('rejects a malformed 2xx response before emitting data', async () => {
-		const request = vi.fn().mockResolvedValue({ balance: 0, period_start: 'not-a-date' });
-		const context = {
-			getInputData: () => [{ json: {} }],
-			getNodeParameter: (name: string) => (name === 'resource' ? 'account' : 'getCreditBalance'),
-			getNode: () => ({
-				name: 'Openmart',
-				type: 'openmart',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			}),
-			continueOnFail: () => false,
-			helpers: { httpRequestWithAuthentication: request },
-		} as unknown as IExecuteFunctions;
-		await expect(new Openmart().execute.call(context)).rejects.toThrow(
-			'expected an integer balance and RFC3339',
+		await expect(receiveCreditBalance.call(context, [], response({ balance: 0 }))).rejects.toThrow(
+			'RFC3339',
 		);
-	});
-
-	it('continues sequentially with correctly paired mixed failures', async () => {
-		const input: INodeExecutionData[] = [{ json: { id: 0 } }, { json: { id: 1 } }];
-		const response = {
-			period_start: '2026-09-01T00:00:00Z',
-			period_end: '2026-10-01T00:00:00Z',
-			balance: 4,
-		};
-		const request = vi
-			.fn()
-			.mockRejectedValueOnce({ statusCode: 401 })
-			.mockResolvedValueOnce(response);
-		const context = {
-			getInputData: () => input,
-			getNodeParameter: (name: string) => (name === 'resource' ? 'account' : 'getCreditBalance'),
-			getNode: () => ({
-				name: 'Openmart',
-				type: 'openmart',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			}),
-			continueOnFail: () => true,
-			helpers: { httpRequestWithAuthentication: request },
-		} as unknown as IExecuteFunctions;
-		const [results] = await new Openmart().execute.call(context);
-		expect(request).toHaveBeenCalledTimes(2);
-		expect(results[0]).toMatchObject({ json: { id: 0 }, pairedItem: 0 });
-		expect(results[0].error?.message).toContain('HTTP 401');
-		expect(results[1]).toEqual({ json: response, pairedItem: 1 });
+		const failure = await receiveCreditBalance
+			.call(context, [], response('Bearer secret private provider body', 401))
+			.then(
+				() => '',
+				(error: unknown) => (error as Error).message,
+			);
+		expect(failure).toContain('HTTP 401');
+		expect(failure).not.toContain('secret');
+		expect(failure).not.toContain('provider body');
 	});
 });
