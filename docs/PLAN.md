@@ -6,19 +6,19 @@ Convert the template, remove demonstrations, add the Openmart credential and Acc
 
 ## Batch 2 — complete
 
-Harden credential and transport errors, retry/redaction behavior, response validation, and item context. Prove n8n's authenticated helper GET-body behavior against a recording server and run a disposable n8n 2.37.10 metadata/icon smoke. Live balance validation remains guarded without an API key.
+Harden credential and transport errors, redaction behavior, response validation, and item context. Prove n8n's authenticated helper GET-body behavior against a recording server and run a disposable n8n 2.37.10 metadata/icon smoke. Live balance validation remains guarded without an API key.
 
 The recommended `httpRequestWithAuthentication` path in n8n 2.37.10 drops GET bodies, while a loopback probe showed that the deprecated legacy transport preserves them. Business Get therefore remains a supported-path compatibility decision; do not choose its transport or advertise it until that decision is reviewed.
 
 ## Batch 3 — complete locally
 
-Implement the first page of Business Search only: required query, location, initial filters and bounded limit that have been verified against current documentation or live evidence, plus the verified response adapter. Add realistic fixtures for results, empty responses, optional/null fields, and validation failures. Keep operation metadata synchronized with execution and preserve input-item pairing and provider metadata.
+Implement the first page of Business Search only: required query, location, initial filters and bounded limit that have been verified against current documentation or live evidence, plus the verified response adapter. Add realistic fixtures for results, empty responses, optional/null fields, and validation failures. Keep operation metadata synchronized with routing hooks and preserve provider metadata. Actual n8n routing execution and input-item pairing remain separate smoke requirements.
 
 Local mocked and package validation is complete; live Openmart validation remains pending. Pagination and Business Get are explicitly excluded from Batch 3.
 
 ## Batch 4 — complete locally: shared asynchronous retrieval
 
-Implemented the release-critical shared retrieval chain: Batch/Get Status, Batch/Get Task IDs, and Task/Get. IDs, status filtering, documented response shapes, pairing, continuation, error sanitation, and bounded safe-read retries have local mocked and package validation. There is no internal polling loop and no paid creation in this batch. Live task states, partial/missing results, and entitlements remain unverified.
+Implemented the release-critical shared retrieval chain: Batch/Get Status, Batch/Get Task IDs, and Task/Get. IDs, status filtering, documented response shapes, pairing, continuation, and error sanitation have local mocked and package validation. The five advertised operations now use declarative routing with no internal retry or polling loop. Live task states, partial/missing results, and entitlements remain unverified.
 
 ## Batch 5 — proposed: email and contact discovery
 

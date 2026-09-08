@@ -2,7 +2,7 @@
 
 ## Batch 2 local and mocked evidence
 
-Strict Vitest contracts cover package registration, node metadata, credential wiring and request configuration, zero balance, malformed successful responses, sequential pairing, empty inputs, per-item continuation, sanitized status failures, permanent-error no-retry behavior, bounded transient retries, `Retry-After` caps, and explicit non-retry mode. A loopback recording-server test proves Node's raw HTTP client can place a JSON array on a GET request at the wire level.
+Strict Vitest contracts cover package registration, declarative node metadata, credential wiring and fixed request defaults, zero balance, malformed successful responses, and sanitized status failures. Hook contracts cover pre-send validation and post-receive shaping. A loopback recording-server test proves Node's raw HTTP client can place a JSON array on a GET request at the wire level.
 
 The opt-in test guard is exactly `OPENMART_N8N_PACKAGE_PATH`; ordinary `npm test` skips the integration test when this caller-supplied package directory is absent. With a disposable pinned `n8n@2.37.10` installation, this command passed:
 
@@ -20,9 +20,26 @@ n8n augmented the metadata with its own **Custom API Call** entries and a `CUSTO
 
 Package gates build the TypeScript, run the pinned official source scanner, inspect the dry-run package boundary, load registrations, and install the packed artifact in an isolated consumer. These checks and the server metadata smoke do not constitute a live Openmart test.
 
+## Post-conversion declarative development smoke
+
+`n8n-node dev` v0.46.4 successfully built, watched, and installed the converted package using `--external-n8n` and a disposable custom-user folder under `/tmp`. Cached pinned n8n 2.37.10 then started healthy on loopback; `/healthz` returned `{"status":"ok"}`. After disposable owner setup, authenticated `/types/nodes.json` exposed `CUSTOM.openmart`, credential `openmartApi`, and these declarative request defaults:
+
+```json
+{
+	"baseURL": "https://api.openmart.ai",
+	"json": true,
+	"returnFullResponse": true,
+	"ignoreHttpStatusErrors": true
+}
+```
+
+The served metadata included all five source operation values: `getCreditBalance`, `search`, `getStatus`, `getTaskIds`, and `get`. Host-injected `__CUSTOM_API_CALL__` entries also appeared. The server stopped cleanly and the exact temporary folder was deleted.
+
+This smoke proves build/watch installation, health, and metadata discovery only. No browser/editor interaction, workflow or node execution, Openmart credential configuration, or Openmart API request occurred. It does not prove declarative routing execution, input-item pairing, scheduling or concurrency behavior, or live Openmart compatibility.
+
 ## Batch 3 Business Search evidence
 
-Synthetic fixtures based on the documented top-level array cover multiple results, empty results, optional/null content fields, match metadata, and the two-element cursor value retained on provider records. Tests exercise the minimal request, one-element location array, top-level initial filters, defaults, trimmed expression-resolved values, 500-character boundary, invalid query/limit/minimum-locations before transport, one-to-many input pairing, atomic response validation, per-input continuation, and no retry after a transient POST failure.
+Synthetic fixtures based on the documented top-level array cover multiple results, empty results, optional/null content fields, match metadata, and the two-element cursor value retained on provider records. Tests exercise declarative request metadata, the minimal pre-send request, one-element location array, top-level initial filters, defaults, validation before transport, one-to-many post-receive output, atomic response validation, and sanitized HTTP failure handling.
 
 A fresh disposable user folder on the existing functional pinned n8n `2.37.10` cache reached a healthy server and completed disposable owner setup. Authenticated source metadata exposed `CUSTOM.openmart` with Account and Business resources, Account/Get Credit Balance, and Business/Search. Search metadata showed required Query; Limit (`resultLimit`) default 10 with minimum 1 and maximum 100; and Location and Filters restricted to Business/Search by display conditions. The `openmartApi` credential was present. n8n also injected its own **Custom API Call** options, which are host behavior and are not advertised by the package source. Both served icon URLs matched the tracked assets exactly by SHA-256. The instance was stopped and its exact temporary folder was deleted.
 
@@ -32,7 +49,7 @@ No search request was sent to Openmart. The exact accepted filter combinations, 
 
 ## Batch 4 asynchronous retrieval evidence
 
-Synthetic fixtures and strict tests cover Batch/Get Status, Batch/Get Task IDs, and Task/Get metadata and execution. They verify trimmed IDs encoded as one path segment, normalized requested `batch_id` correlation on status output, optional non-required status visibility and trimmed omission/mapping, GET requests without bodies, safe-read retry behavior, preserved unknown fields, atomic malformed-response rejection, empty task-ID arrays, one-to-many and multiple-input pairing, Continue On Fail, and sanitized errors. Task Get intentionally permits optional, null, empty, or missing result data pending live evidence. There is no internal polling loop.
+Synthetic fixtures and strict tests cover Batch/Get Status, Batch/Get Task IDs, and Task/Get declarative metadata and hooks. They verify trimmed IDs encoded as one path segment, normalized requested `batch_id` correlation, optional status omission/mapping, GET requests without bodies, preserved unknown fields, atomic malformed-response rejection, empty task-ID arrays, one-to-many output, and sanitized errors. Task Get intentionally permits optional, null, empty, or missing result data pending live evidence. There is no internal retry or polling loop. Multiple-input scheduling and pairing rely on n8n's declarative routing runtime and still require an actual execution smoke.
 
 A fresh disposable user folder on cached pinned n8n `2.37.10` reached healthy loopback status and completed disposable owner setup. Authenticated type metadata exposed credential `openmartApi`; Account, Batch, Business, and Task resources; Batch/Get Status (`getStatus`) and Batch/Get Task IDs (`getTaskIds`); Task/Get (`get`); required Batch ID for both Batch operations; optional Status only for Batch/Get Task IDs; and required Task ID only for Task/Get. n8n injected host-owned `__CUSTOM_API_CALL__` resource/operation entries that are absent from the package's advertised source surface. The server was stopped and the exact temporary script and state were deleted.
 
