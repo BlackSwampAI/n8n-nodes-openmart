@@ -6,6 +6,11 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { mapOpenmartError, parseCreditBalance } from '../shared/request';
+import {
+	buildCompanyEmailTask,
+	buildPeopleSearchTask,
+	parseBatchSubmission,
+} from '../shared/creation';
 import { buildSearchBody, parseSearchResults } from '../shared/search';
 import {
 	encodedId,
@@ -24,6 +29,65 @@ function assertSuccessful(response: IN8nHttpFullResponse, operation: string): vo
 
 function output(json: IDataObject): INodeExecutionData {
 	return { json };
+}
+
+function creationContext(this: IExecuteSingleFunctions) {
+	return {
+		domain: this.getNodeParameter('domain'),
+		companyName: this.getNodeParameter('companyName'),
+		city: this.getNodeParameter('city'),
+		state: this.getNodeParameter('state'),
+		country: this.getNodeParameter('country'),
+		trackingId: this.getNodeParameter('trackingId'),
+	};
+}
+
+export async function preparePeopleSearch(
+	this: IExecuteSingleFunctions,
+	request: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	request.body = [
+		buildPeopleSearchTask({
+			...creationContext.call(this),
+			title: this.getNodeParameter('title'),
+			maxK: this.getNodeParameter('maxK'),
+			infoAccess: this.getNodeParameter('infoAccess'),
+		}),
+	];
+	return request;
+}
+
+export async function receivePeopleSearch(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	assertSuccessful(response, 'People Search Create');
+	const submitted = buildPeopleSearchTask({
+		...creationContext.call(this),
+		title: this.getNodeParameter('title'),
+		maxK: this.getNodeParameter('maxK'),
+		infoAccess: this.getNodeParameter('infoAccess'),
+	});
+	return [output({ ...parseBatchSubmission(response.body, 'People Search Create'), submitted })];
+}
+
+export async function prepareCompanyEmail(
+	this: IExecuteSingleFunctions,
+	request: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	request.body = [buildCompanyEmailTask(creationContext.call(this))];
+	return request;
+}
+
+export async function receiveCompanyEmail(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	assertSuccessful(response, 'Company Email Create');
+	const submitted = buildCompanyEmailTask(creationContext.call(this));
+	return [output({ ...parseBatchSubmission(response.body, 'Company Email Create'), submitted })];
 }
 
 export async function prepareSearch(

@@ -2,9 +2,11 @@
 
 ## Unreleased
 
-- Add Batch Get Status, Batch Get Task IDs, and Task Get with validated responses, pairing, and bounded safe-read retries.
-- Add Business Search first-page execution with query/location/filter validation, fixed no-retry behavior, response validation, and item pairing.
-- Harden balance response validation, status-aware error redaction, per-item continuation, and safe-read retries.
+- Add declarative Company Email Create and People Search Create operations with normalized domains, one-task submissions, validated batch envelopes, and no internal retries.
+- Convert all existing operations to declarative routing and remove custom safe-read retries.
+- Add Batch Get Status, Batch Get Task IDs, and Task Get with validated responses and declarative item handling.
+- Add Business Search first-page routing with query/location/filter validation, no hidden retry, response validation, and item pairing.
+- Harden balance response validation, status-aware error redaction, and declarative per-item handling.
 - Add actual n8n 2.37.10 helper and disposable-server evidence, including the confirmed GET-body limitation.
 - Convert the template to the Openmart package identity and remove demonstration nodes and credentials.
 - Add the Openmart API credential and Account Get Credit Balance operation.

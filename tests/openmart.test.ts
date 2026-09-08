@@ -4,12 +4,16 @@ import { OpenmartApi } from '../credentials/OpenmartApi.credentials';
 import { Openmart } from '../nodes/Openmart/Openmart.node';
 import {
 	prepareBatchStatus,
+	prepareCompanyEmail,
+	preparePeopleSearch,
 	prepareSearch,
 	prepareTask,
 	prepareTaskIds,
 	receiveBatchStatus,
+	receiveCompanyEmail,
 	receiveCreditBalance,
 	receiveSearch,
+	receivePeopleSearch,
 	receiveTask,
 	receiveTaskIds,
 } from '../nodes/Openmart/actions/routing';
@@ -18,7 +22,7 @@ const response = (body: unknown, statusCode = 200) =>
 	({ body, statusCode, headers: {} }) as IN8nHttpFullResponse;
 
 describe('Openmart node contract', () => {
-	it('advertises exactly five routed operations and fixed production transport', () => {
+	it('advertises the routed operations and fixed production transport', () => {
 		const description = new Openmart().description;
 		expect(description.credentials).toEqual([{ name: 'openmartApi', required: true }]);
 		expect(description.requestDefaults).toEqual({
@@ -36,13 +40,17 @@ describe('Openmart node contract', () => {
 			'getCreditBalance',
 			'search',
 			'get',
+			'create',
+			'create',
 		]);
 		for (const operation of advertised) expect(operation).toHaveProperty('routing.request');
 		const routeByValue = Object.fromEntries(
-			advertised.map((option) => [
-				'value' in option ? option.value : '',
-				'routing' in option ? option.routing : undefined,
-			]),
+			advertised
+				.filter((option) => !('value' in option) || option.value !== 'create')
+				.map((option) => [
+					'value' in option ? option.value : '',
+					'routing' in option ? option.routing : undefined,
+				]),
 		);
 		expect(routeByValue).toEqual({
 			getStatus: {
@@ -70,6 +78,25 @@ describe('Openmart node contract', () => {
 				output: { postReceive: [receiveTask] },
 			},
 		});
+		const creationRoutes = advertised
+			.filter((option) => 'value' in option && option.value === 'create')
+			.map((option) => ('routing' in option ? option.routing : undefined));
+		expect(creationRoutes).toEqual([
+			{
+				request: {
+					method: 'POST',
+					url: '/api/v1/task/batch/lookup_business_email',
+					timeout: 90_000,
+				},
+				send: { preSend: [prepareCompanyEmail] },
+				output: { postReceive: [receiveCompanyEmail] },
+			},
+			{
+				request: { method: 'POST', url: '/api/v1/task/batch/find_people', timeout: 90_000 },
+				send: { preSend: [preparePeopleSearch] },
+				output: { postReceive: [receivePeopleSearch] },
+			},
+		]);
 		expect(new Openmart()).not.toHaveProperty('execute');
 	});
 
