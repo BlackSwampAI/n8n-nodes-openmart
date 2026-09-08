@@ -63,6 +63,103 @@ describe('reusable node operation contracts', () => {
 		expect(status?.required).not.toBe(true);
 	});
 
+	it.each([
+		[
+			'companyEmail',
+			['domain', 'companyName'],
+			['paidCreationNotice', 'domain', 'companyName', 'city', 'state', 'country', 'trackingId'],
+		],
+		[
+			'peopleSearch',
+			['domain', 'title', 'maxK', 'infoAccess'],
+			[
+				'paidCreationNotice',
+				'domain',
+				'companyName',
+				'title',
+				'maxK',
+				'infoAccess',
+				'city',
+				'state',
+				'country',
+				'trackingId',
+			],
+		],
+	] as const)(
+		'checks the complete paid creation control surface for %s',
+		(resource, requiredControls, visibleControls) => {
+			const description = new Openmart().description;
+			expect(() =>
+				assertRequiredControls(description, {
+					resource,
+					operation: 'create',
+					requiredControls: [...requiredControls],
+				}),
+			).not.toThrow();
+			const visible = description.properties.filter(
+				({ displayOptions }) =>
+					displayOptions?.show?.resource?.includes(resource) &&
+					displayOptions.show.operation?.includes('create'),
+			);
+			expect(visible.map(({ name }) => name)).toEqual(visibleControls);
+			for (const property of visible) {
+				expect(property.displayOptions?.show?.operation).toEqual(['create']);
+			}
+			const companyNameBranches = description.properties.filter(
+				({ name }) => name === 'companyName',
+			);
+			expect(companyNameBranches).toHaveLength(2);
+			expect(
+				companyNameBranches.filter(({ displayOptions }) =>
+					displayOptions?.show?.resource?.includes(resource),
+				),
+			).toHaveLength(1);
+			const companyName = visible.find(({ name }) => name === 'companyName');
+			expect(companyName?.required === true).toBe(resource === 'companyEmail');
+		},
+	);
+
+	it('advertises the exact paid resource and operation identities', () => {
+		const description = new Openmart().description;
+		const resource = description.properties.find(({ name }) => name === 'resource');
+		expect(resource?.options).toEqual(
+			expect.arrayContaining([
+				{ name: 'Company Email', value: 'companyEmail' },
+				{ name: 'People Search', value: 'peopleSearch' },
+			]),
+		);
+		for (const resourceName of ['companyEmail', 'peopleSearch']) {
+			const operation = description.properties.find(
+				({ name, displayOptions }) =>
+					name === 'operation' && displayOptions?.show?.resource?.includes(resourceName),
+			);
+			expect(operation).toMatchObject({
+				default: 'create',
+				options: [expect.objectContaining({ name: 'Create', value: 'create' })],
+			});
+		}
+	});
+
+	it('defines safe paid-creation defaults and omits unsupported controls', () => {
+		const properties = new Openmart().description.properties;
+		expect(properties.find(({ name }) => name === 'title')?.default).toBe(
+			'Owner or decision maker',
+		);
+		expect(properties.find(({ name }) => name === 'maxK')).toMatchObject({
+			displayName: 'Max Contacts',
+			default: 1,
+			typeOptions: { minValue: 1, maxValue: 8 },
+		});
+		expect(properties.find(({ name }) => name === 'infoAccess')).toMatchObject({
+			displayName: 'Contact Information',
+			default: ['EMAIL'],
+			type: 'multiOptions',
+		});
+		expect(
+			properties.some(({ name }) => ['notify_url', 'notifyUrl', 'version'].includes(name)),
+		).toBe(false);
+	});
+
 	it('normalizes manual and list-mode resource locator values', () => {
 		expect(normalizeResourceLocator(' manual-id ', 'Example')).toBe('manual-id');
 		expect(normalizeResourceLocator({ mode: 'list', value: ' listed-id ' }, 'Example')).toBe(

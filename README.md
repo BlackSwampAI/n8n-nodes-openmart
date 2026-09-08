@@ -1,6 +1,6 @@
 # Openmart for n8n
 
-Use Openmart account, business-search, batch, and task data in n8n workflows. The integration exposes a safe balance lookup, bounded first-page business search, and reads for existing asynchronous work.
+Use Openmart account, business-search, company-email, people-search, batch, and task data in n8n workflows. The integration exposes balance and business search, paid background creation, and reads for asynchronous work.
 
 > This is an independent Black Swamp AI community integration. It is not affiliated with, endorsed by, sponsored by, or maintained by Openmart. Product names and marks belong to their respective owners and are used only to identify compatibility.
 
@@ -15,7 +15,7 @@ Distribution is unavailable. There is no supported public installation path for 
 | Surface             | Tested baseline                          | Notes                                                                                                   |
 | ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | n8n                 | 2.37.10                                  | Disposable server metadata confirmed discovery and icon URLs; no visual editor execution was performed. |
-| Openmart API        | Documentation reviewed September 6, 2026 | No API key was configured and no live request was made.                                                 |
+| Openmart API        | Documentation reviewed September 7, 2026 | The user reports successful credential save, Balance, and Business Search; paid creation was not run.   |
 | Node.js development | 22.22.0 and 24                           | Repository CI targets both versions; local results are recorded in [testing notes](docs/testing.md).    |
 
 ## Credentials
@@ -28,11 +28,13 @@ Never commit API keys or real prospect data.
 
 - **Account → Get Credit Balance** returns Openmart's `period_start`, `period_end`, and integer `balance` fields without converting credits to currency.
 - **Business → Search** submits a required query with an optional location and initial website/contact/location-count filters, then returns one n8n item per provider business.
+- **Company Email → Create** starts paid background work to find generic shared inbox addresses and returns its batch submission envelope.
+- **People Search → Create** starts paid background work to find decision makers and returns its batch submission envelope.
 - **Batch → Get Status** returns readiness and progress counts plus the normalized requested `batch_id` for direct chaining.
 - **Batch → Get Task IDs** optionally filters by a free-text status such as `COMPLETED`, then emits one `{task_id,batch_id}` item per returned task for direct chaining.
 - **Task → Get** returns the full provider task envelope, including available result data.
 
-Business retrieval, search pagination, polling, and paid creation operations are not advertised yet.
+Business retrieval, search pagination, and polling are not advertised yet.
 
 ## Usage
 
@@ -43,6 +45,8 @@ The node uses n8n's declarative request routing and makes one request per input 
 Business Search accepts a 1–500 character query and returns only its first page. Limit defaults to 10 and is capped at 100, a conservative cap compatible with documented preview keys even though the general documentation states a maximum of 1000. Country, state, and city are free text; country codes and names are both documented, so the node does not force `US` or `USA`. Search always requests `estimate_total: false`, sends no cursor, and is never retried automatically because its credit effect has not been verified.
 
 Batch and Task reads require an existing ID. Declarative routing may schedule multiple input-item requests concurrently. IDs are trimmed and encoded as one URL path segment. The node does not poll or retry internally: chain Get Status, Get Task IDs, and Task Get explicitly according to workflow needs.
+
+Company Email and People Search consume Openmart credits and create background work. Each input item submits exactly one task and returns immediately after Openmart accepts the batch; use the Batch and Task operations to retrieve results. The 90-second request timeout accommodates documented submission latency, but it does not poll. These creation requests have no internal retry. Enabling n8n **Retry On Fail** or manually rerunning an execution can create and charge for duplicate work, so verify the batch outcome before retrying.
 
 ## Troubleshooting
 

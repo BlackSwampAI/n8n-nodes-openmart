@@ -57,7 +57,22 @@ This actual-n8n observation proves health, discovery, and served metadata only. 
 
 ## Live testing status
 
-No Openmart API key is configured. No live Openmart request, paid operation, real prospect lookup, browser/editor interaction, visual icon theme inspection, balance or search execution inside n8n, or Creator Portal inspection has been performed. Live checks require explicit authorization.
+No Openmart API key is configured in the automated test environment. This implementation run performed no live Openmart request, paid operation, real prospect lookup, browser/editor interaction, visual icon theme inspection, workflow execution inside n8n, or Creator Portal inspection. Live checks require explicit authorization.
+
+## Batch 5 paid creation evidence
+
+Metadata and hook-contract tests cover Company Email Create and People Search Create routes, 90-second timeouts, required/default controls, one-element request arrays, domain normalization and rejection, optional-field trimming, people-search boundaries, response preservation, normalized `submitted` context, malformed-success rejection, and sanitized HTTP errors. Source and package gates provide no evidence of live paid behavior. No paid request, polling, or retry was performed.
+
+On September 7, 2026, the user reported that saving the credential and running live Balance and Business Search succeeded. This is user-reported evidence, not an authenticated response or timing observed by this implementation run. Batch and Task reads remained unverified because no batch or task IDs existed. The new Company Email and People Search creation operations have not been run live.
+
+An orchestrator-observed post-Batch-5 disposable metadata smoke used `n8n-node dev` v0.46.4 with `--external-n8n` to build, watch, and install the package successfully. Pinned n8n 2.37.10 then started healthy on loopback. After disposable owner setup, authenticated `/types/nodes.json` exposed `CUSTOM.openmart` with Company Email and People Search plus Account, Batch, Business, and Task. The two Create operations served these exact request settings:
+
+- Company Email: `POST /api/v1/task/batch/lookup_business_email`, `timeout: 90000`.
+- People Search: `POST /api/v1/task/batch/find_people`, `timeout: 90000`.
+
+The metadata also served credential `openmartApi`, the paid-work notice, required and default controls, and their resource/operation display conditions. n8n injected host-owned Custom API Call entries. The server stopped cleanly and the exact disposable `/tmp` state was deleted.
+
+This is installation, health, and served-metadata evidence only. No browser/editor visual interaction, workflow or node execution, Openmart credential configuration, Openmart API request, or paid work occurred. The smoke makes no claim about routing execution, item pairing, concurrency, or live Openmart compatibility.
 
 ## Safety
 

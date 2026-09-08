@@ -18,15 +18,15 @@ Local mocked and package validation is complete; live Openmart validation remain
 
 ## Batch 4 — complete locally: shared asynchronous retrieval
 
-Implemented the release-critical shared retrieval chain: Batch/Get Status, Batch/Get Task IDs, and Task/Get. IDs, status filtering, documented response shapes, pairing, continuation, and error sanitation have local mocked and package validation. The five advertised operations now use declarative routing with no internal retry or polling loop. Live task states, partial/missing results, and entitlements remain unverified.
+Implemented the release-critical shared retrieval chain: Batch/Get Status, Batch/Get Task IDs, and Task/Get. IDs, status filtering, documented response shapes, pairing, continuation, and error sanitation have local mocked and package validation. The then-five advertised operations were converted to declarative routing with no internal retry or polling loop. Live task states, partial/missing results, and entitlements remain unverified.
 
-## Batch 5 — proposed: email and contact discovery
+## Batch 5 — complete locally: email and contact discovery
 
-Implement Find Company Emails as a 0.1.0 requirement using `POST /api/v1/task/batch/lookup_business_email`. It creates paid asynchronous work from 1–100 JSON-array tasks. Each task requires a nonblank `domain` and `company_name`; city, state, country, and `tracking_id` are optional. Paid creation is never automatically retried. Results flow through the shared Batch Status → Task IDs → Task Get chain and yield generic mailbox `{email,status}` records. Do not promise `notify_url` support unless it is separately planned and verified.
+Implemented Company Email Create using `POST /api/v1/task/batch/lookup_business_email`. Each n8n input item creates one paid asynchronous task with required normalized `domain` and `company_name`; city, state, country, and `tracking_id` are optional. The submission envelope is validated and returned with normalized submitted context. `notify_url` is not exposed.
 
-Also implement Find Decision Makers as a 0.1.0 requirement using `POST /api/v1/task/batch/find_people`, yielding named individual contacts and their emails through the same shared retrieval chain. Both paid asynchronous creation paths must explicitly disable automatic retries.
+Implemented People Search Create using `POST /api/v1/task/batch/find_people`, with required domain, title, `max_k` from 1 through 8, and explicit email/phone access selection. Both creation paths use a 90-second submission timeout, create no internal retry or polling behavior, and return through the shared Batch Status → Task IDs → Task Get lifecycle.
 
-Demonstrate the release-critical Search → email/contact discovery → downstream data handoff without sending outreach, with fixtures and workflow evidence for both branches where appropriate. Company Emails finds generic shared inboxes; Find Decision Makers finds named individual contacts. Resolve the Company Emails documentation's `submit_for` ambiguity through authorized live validation before finalizing that creation contract.
+Local metadata, hook, validation, error-redaction, and package evidence is complete. Live paid creation, actual task results, and the release-critical Search → email/contact discovery → downstream data handoff remain pending. Company Email's conflicting current/legacy `submit_for` labels are preserved rather than hard-coded.
 
 ## Remaining 0.1.0 planned work
 
