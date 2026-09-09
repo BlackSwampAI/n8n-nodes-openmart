@@ -8,9 +8,16 @@ import type {
 import { mapOpenmartError, parseCreditBalance } from '../shared/request';
 import {
 	buildCompanyEmailTask,
+	buildKnownPeopleTask,
 	buildPeopleSearchTask,
 	parseBatchSubmission,
 } from '../shared/creation';
+import {
+	buildCompanyEnrichBody,
+	buildCompanySearchBody,
+	parseCompanyEnrich,
+	parseCompanySearch,
+} from '../shared/prospecting';
 import { buildSearchBody, parseSearchResults } from '../shared/search';
 import {
 	encodedId,
@@ -62,14 +69,16 @@ export async function receivePeopleSearch(
 	_items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	assertSuccessful(response, 'People Search Create');
+	assertSuccessful(response, 'Person Find Decision Makers');
 	const submitted = buildPeopleSearchTask({
 		...creationContext.call(this),
 		title: this.getNodeParameter('title'),
 		maxK: this.getNodeParameter('maxK'),
 		infoAccess: this.getNodeParameter('infoAccess'),
 	});
-	return [output({ ...parseBatchSubmission(response.body, 'People Search Create'), submitted })];
+	return [
+		output({ ...parseBatchSubmission(response.body, 'Person Find Decision Makers'), submitted }),
+	];
 }
 
 export async function prepareCompanyEmail(
@@ -85,9 +94,88 @@ export async function receiveCompanyEmail(
 	_items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	assertSuccessful(response, 'Company Email Create');
+	assertSuccessful(response, 'Company Find Emails');
 	const submitted = buildCompanyEmailTask(creationContext.call(this));
-	return [output({ ...parseBatchSubmission(response.body, 'Company Email Create'), submitted })];
+	return [output({ ...parseBatchSubmission(response.body, 'Company Find Emails'), submitted })];
+}
+
+export async function prepareCompanySearch(
+	this: IExecuteSingleFunctions,
+	request: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	request.body = buildCompanySearchBody({
+		companySearchTerm: this.getNodeParameter('companySearchTerm'),
+		companySearchLocation: this.getNodeParameter('companySearchLocation'),
+		ownershipType: this.getNodeParameter('ownershipType'),
+		storeCount: this.getNodeParameter('storeCount'),
+		hasStaffInfo: this.getNodeParameter('hasStaffInfo'),
+		hasBusinessEmail: this.getNodeParameter('hasBusinessEmail'),
+		hasBusinessPhone: this.getNodeParameter('hasBusinessPhone'),
+		companySearchLimit: this.getNodeParameter('companySearchLimit'),
+	});
+	return request;
+}
+
+export async function receiveCompanySearch(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	assertSuccessful(response, 'Company Search');
+	return parseCompanySearch(response.body).map(output);
+}
+
+export async function prepareCompanyEnrich(
+	this: IExecuteSingleFunctions,
+	request: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	request.body = buildCompanyEnrichBody({
+		website: this.getNodeParameter('website'),
+		socialMediaLink: this.getNodeParameter('socialMediaLink'),
+		companyEnrichLocation: this.getNodeParameter('companyEnrichLocation'),
+		companyEnrichLimit: this.getNodeParameter('companyEnrichLimit'),
+	});
+	return request;
+}
+
+export async function receiveCompanyEnrich(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	assertSuccessful(response, 'Company Enrich');
+	return parseCompanyEnrich(response.body).map(output);
+}
+
+function knownPeopleContext(this: IExecuteSingleFunctions) {
+	return {
+		domain: this.getNodeParameter('domain'),
+		companyName: this.getNodeParameter('companyName'),
+		city: this.getNodeParameter('city'),
+		state: this.getNodeParameter('state'),
+		country: this.getNodeParameter('country'),
+		trackingId: this.getNodeParameter('trackingId'),
+		people: this.getNodeParameter('people'),
+		infoAccess: this.getNodeParameter('infoAccess'),
+	};
+}
+
+export async function prepareKnownPeople(
+	this: IExecuteSingleFunctions,
+	request: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	request.body = [buildKnownPeopleTask(knownPeopleContext.call(this))];
+	return request;
+}
+
+export async function receiveKnownPeople(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	assertSuccessful(response, 'Person Enrich');
+	const submitted = buildKnownPeopleTask(knownPeopleContext.call(this));
+	return [output({ ...parseBatchSubmission(response.body, 'Person Enrich'), submitted })];
 }
 
 export async function prepareSearch(
