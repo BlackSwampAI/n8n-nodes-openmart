@@ -12,8 +12,8 @@ export class OpenmartApi implements ICredentialType {
 	displayName = 'Openmart API';
 
 	icon: Icon = {
-		light: 'file:../nodes/Openmart/openmart.svg',
-		dark: 'file:../nodes/Openmart/openmart.dark.svg',
+		light: 'file:../nodes/Openmart/openmart.png',
+		dark: 'file:../nodes/Openmart/openmart.dark.png',
 	};
 
 	documentationUrl = 'https://app.openmart.com/api-docs/quickstart';

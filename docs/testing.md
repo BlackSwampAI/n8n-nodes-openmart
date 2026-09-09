@@ -10,7 +10,11 @@ The opt-in test guard is exactly `OPENMART_N8N_PACKAGE_PATH`; ordinary `npm test
 OPENMART_N8N_PACKAGE_PATH=/tmp/<disposable>/node_modules/n8n npm test -- --run tests/openmart-n8n-helper.test.ts
 ```
 
-The actual `httpRequestWithAuthentication` path applied the fake credential (`Authorization: Bearer fake-loopback-key`) but the loopback server received an empty GET body. This confirms the recommended n8n 2.37.10 path drops the documented Business Get JSON-array body. Deprecated legacy transport preserved it in loopback, so the unresolved issue is a supported-path compatibility decision rather than universal transport impossibility. It does not prove live Openmart behavior.
+The actual `httpRequestWithAuthentication` path applied the fake credential (`Authorization: Bearer fake-loopback-key`) but the loopback server received an empty GET body. This confirms the recommended n8n 2.37.10 path drops the documented Business Get JSON-array body. Deprecated legacy transport preserved it in loopback, but Business Get is formally deferred from 0.1.0 rather than relying on deprecated transport. It does not prove live Openmart behavior.
+
+On September 9, 2026, an orchestrator-observed loopback probe repeated the modern-helper test with current npm n8n 2.38.1. `httpRequestWithAuthentication` sent Bearer authorization but again sent an empty GET body, matching pinned 2.37.10. The disposable 2.38.1 installation was deleted afterward. There is therefore no supported declarative transport for the endpoint's required GET JSON-array body in the tested modern n8n versions.
+
+Separately, the user reported that an n8n HTTP Request node using the Openmart credential successfully called the documented GET-body endpoint with Openmart ID `01682f76-d0f4-4629-b5f5-02d24fb56f49` and returned Third Space Coffee. The same route returned HTTP 404 when called with POST, while GET with `?openmart_id=<id>` and no body returned `payload can't be empty`. This was not agent-observed, and no credit effect is inferred. The HTTP Request node is a manual workaround, not an advertised Openmart node operation or declarative implementation. Business Get can be reconsidered if Openmart offers POST/query transport or n8n's modern authenticated helper preserves GET bodies.
 
 ## Disposable n8n 2.37.10 smoke
 
