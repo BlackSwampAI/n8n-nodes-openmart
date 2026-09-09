@@ -37,6 +37,29 @@ describe('reusable node operation contracts', () => {
 			resource: ['business'],
 			operation: ['search'],
 		});
+		const businessControls = description.properties.filter(
+			({ displayOptions }) =>
+				displayOptions?.show?.resource?.includes('business') === true &&
+				displayOptions.show.operation?.includes('search') === true,
+		);
+		expect(businessControls.map(({ name }) => name)).toEqual([
+			'query',
+			'returnAll',
+			'resultLimit',
+			'location',
+			'filters',
+		]);
+		expect(businessControls.find(({ name }) => name === 'returnAll')).toMatchObject({
+			default: false,
+		});
+		expect(businessControls.find(({ name }) => name === 'resultLimit')).toMatchObject({
+			default: 10,
+			typeOptions: { minValue: 1, maxValue: 1_000 },
+			displayOptions: {
+				show: { resource: ['business'], operation: ['search'], returnAll: [false] },
+			},
+			routing: { output: { maxResults: '={{ $value }}' } },
+		});
 	});
 
 	it.each([

@@ -1,9 +1,15 @@
-import type { IExecuteSingleFunctions, IN8nHttpFullResponse } from 'n8n-workflow';
+import type {
+	DeclarativeRestApiSettings,
+	IExecutePaginationFunctions,
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
+} from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 import { Openmart } from '../nodes/Openmart/Openmart.node';
 import {
 	prepareCompanyEnrich,
 	prepareCompanySearch,
+	paginateCompanySearch,
 	prepareKnownPeople,
 	receiveCompanyEnrich,
 	receiveCompanySearch,
@@ -21,6 +27,7 @@ const response = (body: unknown, statusCode = 200) =>
 	({ body, statusCode, headers: {} }) as IN8nHttpFullResponse;
 const companySearch = {
 	companySearchTerm: 'coffee',
+	returnAll: false,
 	companySearchLocation: {},
 	ownershipType: [],
 	storeCount: {},
@@ -73,9 +80,12 @@ describe('prospecting core', () => {
 			}),
 			expect.objectContaining({
 				value: 'search',
-				routing: expect.objectContaining({
+				routing: {
 					request: { method: 'POST', url: '/api/v2/brands/search' },
-				}),
+					send: { preSend: [prepareCompanySearch], paginate: true },
+					output: { postReceive: [receiveCompanySearch] },
+					operations: { pagination: paginateCompanySearch },
+				},
 			}),
 			expect.objectContaining({
 				value: 'enrich',
@@ -94,6 +104,34 @@ describe('prospecting core', () => {
 			}),
 		]);
 		expect(new Openmart()).not.toHaveProperty('execute');
+	});
+
+	it('stops Company Search on empty/blank cursors and rejects repeated or malformed cursors', async () => {
+		const run = async (pages: Array<Array<{ json: Record<string, unknown> }>>) => {
+			let call = 0;
+			const paginationContext = {
+				getNodeParameter: (name: string) => ({ returnAll: true, companySearchLimit: 10 })[name],
+				makeRoutingRequest: async () => pages[call++] ?? [],
+			} as unknown as IExecutePaginationFunctions;
+			return paginateCompanySearch.call(paginationContext, {
+				options: { body: { pagination: { limit: 100 } } },
+				preSend: [],
+				postReceive: [],
+			} as DeclarativeRestApiSettings.ResultOptions);
+		};
+		await expect(run([[]])).resolves.toEqual([]);
+		await expect(run([[{ json: { id: 'one', openmart_next_cursor: ' ' } }]])).resolves.toHaveLength(
+			1,
+		);
+		await expect(
+			run([
+				[{ json: { id: 'one', openmart_next_cursor: 'same' } }],
+				[{ json: { id: 'two', openmart_next_cursor: 'same' } }],
+			]),
+		).rejects.toThrow('repeated cursor');
+		await expect(run([[{ json: { id: 'one', openmart_next_cursor: ['bad'] } }]])).rejects.toThrow(
+			'invalid cursor',
+		);
 	});
 
 	it('publishes intentional controls, defaults, requirements, and isolated display branches', () => {
@@ -169,11 +207,22 @@ describe('prospecting core', () => {
 			'hasStaffInfo',
 			'hasBusinessEmail',
 			'hasBusinessPhone',
+			'returnAll',
 			'companySearchLimit',
 		]);
 		expect(property('company', 'search', 'companySearchLimit')).toMatchObject({
 			default: 10,
-			typeOptions: { minValue: 1, maxValue: 100 },
+			typeOptions: { minValue: 1, maxValue: 1_000 },
+			displayOptions: {
+				show: { resource: ['company'], operation: ['search'], returnAll: [false] },
+			},
+			routing: { output: { maxResults: '={{ $value }}' } },
+		});
+		expect(property('company', 'search', 'returnAll')).toMatchObject({
+			default: false,
+			hint: expect.stringContaining(
+				'Openmart preview API keys do not support Company cursor pagination',
+			),
 		});
 		expect(property('company', 'search', 'storeCount')).toMatchObject({
 			type: 'collection',
@@ -321,13 +370,68 @@ describe('prospecting core', () => {
 
 	it.each([
 		[{ ...companySearch, companySearchTerm: '' }, 'narrowing filter'],
-		[{ ...companySearch, companySearchLimit: 101 }, 'Limit'],
+		[{ ...companySearch, companySearchLimit: 1_001 }, 'Limit'],
 		[{ ...companySearch, storeCount: { minimumStores: 10, maximumStores: 2 } }, 'must not exceed'],
 		[{ ...companySearch, ownershipType: ['OTHER'] }, 'Ownership Type'],
 	])('rejects unsafe company search %# before transport', async (parameters, message) => {
 		await expect(
 			prepareCompanySearch.call(context(parameters), { url: '/search' }),
 		).rejects.toThrow(message);
+	});
+
+	it('places Company Search cursors in the nested pagination body and truncates globally', async () => {
+		const requests: DeclarativeRestApiSettings.ResultOptions[] = [];
+		const paginationContext = {
+			getNodeParameter: (name: string) => ({ returnAll: false, companySearchLimit: 101 })[name],
+			makeRoutingRequest: async (options: DeclarativeRestApiSettings.ResultOptions) => {
+				requests.push(options);
+				if (requests.length === 1) {
+					return Array.from({ length: 100 }, (_, index) => ({
+						json: { brand_id: `brand-${index}`, openmart_next_cursor: 'encoded-next' },
+					}));
+				}
+				return [
+					{ json: { brand_id: 'brand-99', openmart_next_cursor: 'unused' } },
+					{ json: { brand_id: 'brand-100', openmart_next_cursor: 'unused' } },
+				];
+			},
+		} as unknown as IExecutePaginationFunctions;
+		const options = {
+			options: {
+				method: 'POST',
+				url: '/api/v2/brands/search',
+				body: { search_param: {}, pagination: { limit: 100 }, estimate_total: false },
+			},
+			preSend: [],
+			postReceive: [],
+		} as DeclarativeRestApiSettings.ResultOptions;
+		await expect(paginateCompanySearch.call(paginationContext, options)).resolves.toHaveLength(101);
+		expect(requests).toHaveLength(2);
+		expect(requests[1]?.options.body).toEqual({
+			search_param: {},
+			pagination: { limit: 1, encoded_cursor: 'encoded-next' },
+			estimate_total: false,
+		});
+	});
+
+	it('does not collapse Company Search rows that lack a provider brand_id', async () => {
+		let call = 0;
+		const paginationContext = {
+			getNodeParameter: (name: string) => ({ returnAll: true, companySearchLimit: 10 })[name],
+			makeRoutingRequest: async () => {
+				call += 1;
+				return call === 1
+					? [{ json: { name: 'Unknown brand', openmart_next_cursor: 'next' } }]
+					: [{ json: { name: 'Unknown brand' } }];
+			},
+		} as unknown as IExecutePaginationFunctions;
+		await expect(
+			paginateCompanySearch.call(paginationContext, {
+				options: { body: { pagination: { limit: 100 } } },
+				preSend: [],
+				postReceive: [],
+			} as DeclarativeRestApiSettings.ResultOptions),
+		).resolves.toHaveLength(2);
 	});
 
 	it('builds and emits company enrich results', async () => {

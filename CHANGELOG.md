@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add bounded declarative cursor pagination for Business and Company Search with standard Return All/Limit controls, global limits, cursor validation, deduplication, and page-count safety.
+- Replace the generated SVG icons with byte-identical light/dark packaging copies of Openmart's official color PNG mark.
 - Consolidate prospecting under Company and Person resources; add brand-level Company Search, Company Enrich, and known-person enrichment.
 - Prevent blank Company Search store-count controls from materializing as an unintended zero-store filter; clarify brand/store semantics, enrichment scope, state guidance, and async result retrieval.
 - Add declarative Company Email Create and People Search Create operations with normalized domains, one-task submissions, validated batch envelopes, and no internal retries.

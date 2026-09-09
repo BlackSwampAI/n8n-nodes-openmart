@@ -6,10 +6,10 @@
 - Password API-key credential with Bearer authentication and harmless balance test.
 - Declarative routing for all ten advertised operations, with fixed production transport, local pre-send validation, response shaping, and sanitized errors without hidden retries.
 - Account → Get Credit Balance, validating provider fields, accepting zero, and mapping/redacting errors.
-- Business → Search first page with required query, conservative preview-compatible limit, optional location and four initial filters, atomic response validation, no cursor, and no automatic retry.
+- Business → Search with required query, optional location and four initial filters, opt-in cursor pagination, a default total Limit of 10, and no automatic retry.
 - Batch → Get Status and Get Task IDs, plus Task → Get, with trimmed path-segment IDs, optional free-text task-status filtering, documented-shape validation, and direct chaining output.
 - Company → Find Emails and Person → Find Decision Makers preserve the paid one-task submission contracts under consolidated pre-release resource identities.
-- Company → Search provides guarded first-page brand targeting; Company → Enrich matches by website/social link; Person → Enrich Known Person submits 1–8 named contacts asynchronously.
+- Company → Search provides guarded brand targeting with opt-in cursor pagination; Company → Enrich matches by website/social link; Person → Enrich Known Person submits 1–8 named contacts asynchronously.
 - Neutral original themed icons and product documentation.
 - Disposable n8n 2.37.10 metadata discovery and exact icon URL/hash verification.
 
@@ -37,7 +37,9 @@ This prospecting-core smoke proves discovery and the served metadata contract on
 
 On September 9, 2026, an orchestrator-observed loopback probe with current npm n8n 2.38.1 confirmed that `httpRequestWithAuthentication` sent Bearer authorization but an empty GET body, matching pinned 2.37.10. Its disposable installation was deleted afterward. The user separately reported that a manual n8n HTTP Request node with the Openmart credential sent the documented GET body for ID `01682f76-d0f4-4629-b5f5-02d24fb56f49` and returned Third Space Coffee; POST returned 404, and bodyless GET query transport returned `payload can't be empty`. This was not agent-observed, and no credit effect is inferred. The HTTP Request node remains a manual workaround rather than an advertised Openmart operation.
 
-User testing exposed a pre-fix Company Search discrepancy: the custom node returned a successful empty result for coffee shops in San Francisco, California, while an n8n HTTP Request using the same credential and exact documented body returned Cable Car Coffee SF. Moving the optional numeric store-count fields into an opt-in Store Count collection removed the unintended filter. In a real-n8n post-fix retest with coffee shop / US / CA / San Francisco / limit 1, the user reported that Company Search returned Cable Car Coffee SF plus `openmart_next_cursor`. This positive path and cursor exposure are user-reported live evidence, not agent-observed. Cursor continuation, other filters, empty cases, and credit behavior remain unverified.
+User testing exposed a pre-fix Company Search discrepancy: the custom node returned a successful empty result for coffee shops in San Francisco, California, while an n8n HTTP Request using the same credential and exact documented body returned Cable Car Coffee SF. Moving the optional numeric store-count fields into an opt-in Store Count collection removed the unintended filter. In a real-n8n post-fix retest with coffee shop / US / CA / San Francisco / limit 1, the user reported that Company Search returned Cable Car Coffee SF plus `openmart_next_cursor`. This positive path and cursor exposure are user-reported live evidence, not agent-observed. Pagination is implemented locally, but live cursor continuation, other filters, empty cases, and credit behavior remain unverified.
+
+The user subsequently reported that a real-n8n Business Search with total Limit 101 returned exactly 101 items. Because the implementation caps provider pages at 100, this demonstrates Business Search second-page cursor continuation and global Limit behavior. This was not agent-observed; the exact query and filters, authenticated response, request logs, unique-ID count, credit delta, Return All, and error paths were not inspected.
 
 The user later reported that Company Find Emails submission succeeded for `n8n.io`, Batch Get Status progressed to completed and ready, Batch Get Task IDs succeeded, and Task Get returned one email. This is user-reported live evidence, not an authenticated response observed by the agent. Other task states, status filters, partial failures, and missing/empty results remain unresolved. The user also reported that Company Enrich for `blackswampai.com` completed as a valid empty/no-match response; no positive enrichment match has been demonstrated.
 
@@ -45,8 +47,9 @@ Availability of `https://blackswampai.com/n8n-nodes/openmart/` was not independe
 
 ## Open questions
 
-- Search docs accept a country code or name and examples vary between `US` and `USA`; the UI intentionally keeps country free text. The general maximum is 1000 while preview keys are capped at 100, so the UI conservatively caps at 100 pending account validation.
-- Company Search's documented positive path and cursor exposure have user-reported live validation. Cursor input/continuation, other filters, empty cases, and credit behavior remain unverified.
+- Search docs accept a country code or name and examples vary between `US` and `USA`; the UI intentionally keeps country free text. Search Limit is a total-result cap of 1–1000; API requests use pages of at most 100. Return All is opt-in and stops after 100 pages as a safety bound.
+- Company Search's documented positive path and cursor exposure have user-reported live validation. Pagination is implemented and locally contract-tested, but live page-two continuation, preview-key entitlement behavior, other filters, empty cases, and credit behavior remain unverified.
+- Business Search page-two continuation and a total Limit of 101 have user-reported live validation. Return All, exact request logs, credit behavior, and pagination error paths remain unverified.
 - Endpoint/account entitlements and billing effects.
 - The Company Find Emails path demonstrated one user-reported completed/ready batch, task-ID retrieval, and Task Get email result. Other state transitions, status-filter behavior, tracking IDs, partial failures, and missing/empty results require live validation.
 - Person → Find Decision Makers remains unexercised against the live paid endpoint. Find Emails' documented `submit_for` labels remain ambiguous beyond the reported successful submission; the response validator deliberately accepts any nonblank label. `notify_url` is not exposed.
