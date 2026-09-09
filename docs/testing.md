@@ -63,6 +63,10 @@ This actual-n8n observation proves health, discovery, and served metadata only. 
 
 No Openmart API key is configured in the automated test environment. This implementation run performed no live Openmart request, paid operation, real prospect lookup, browser/editor interaction, visual icon theme inspection, workflow execution inside n8n, or Creator Portal inspection. Live checks require explicit authorization.
 
+After PR #9 CI and the pagination README correction, the user reported another successful manual smoke of the local build. The exact operations, inputs, and results were not supplied, so this report does not extend operation-specific live coverage.
+
+The user accepted Person → Find Decision Makers live paid validation as a disclosed 0.1.0 gap. The exact npm-published 0.1.0 artifact will be tested after publication, and that smoke is a hard gate before Creator Portal submission. If it reveals a defect requiring code or documentation changes, a new immutable version (expected 0.1.1) must be published and that exact version submitted; published 0.1.0 must not be overwritten.
+
 ## Batch 5 paid creation evidence
 
 Metadata and hook-contract tests cover Company Email Create and People Search Create routes, 90-second timeouts, required/default controls, one-element request arrays, domain normalization and rejection, optional-field trimming, people-search boundaries, response preservation, normalized `submitted` context, malformed-success rejection, and sanitized HTTP errors. Source and package gates provide no evidence of live paid behavior. No paid request, polling, or retry was performed.

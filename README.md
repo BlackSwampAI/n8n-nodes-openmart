@@ -8,7 +8,13 @@ Use Openmart account, business-search, company-email, people-search, batch, and 
 
 ## Installation
 
-Distribution is unavailable. There is no supported public installation path for this package. Maintainers can use the repository's local build and package-smoke commands for development validation.
+An Owner or Admin can install the published package on self-hosted n8n:
+
+1. Open **Settings → Community Nodes → Install**.
+2. Review and accept the warning about installing unverified code.
+3. Enter the exact npm package name `@blackswampai/n8n-nodes-openmart` and select **Install**.
+
+Until n8n verification is granted, this package is not available as a verified community node on n8n Cloud. See n8n's [GUI installation guide](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation/) for current self-hosted requirements and management steps.
 
 ## Compatibility
 
