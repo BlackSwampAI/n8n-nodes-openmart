@@ -26,14 +26,14 @@ Implemented Company → Find Emails using `POST /api/v1/task/batch/lookup_busine
 
 Implemented Person → Find Decision Makers using `POST /api/v1/task/batch/find_people`, with required domain, title, `max_k` from 1 through 8, and explicit email/phone access selection. Both creation paths use a 90-second submission timeout, create no internal retry or polling behavior, and return through the shared Batch Status → Task IDs → Task Get lifecycle.
 
-Local metadata, hook, validation, error-redaction, and package evidence is complete. The user-reported Company Find Emails branch demonstrated submission, completed/ready status, task-ID retrieval, and one returned email for `n8n.io`; this was not agent-observed. Person paid creation, other Company cases, broader task states and failures, and the Person discovery-to-contact handoff remain pending. Find Emails' conflicting current/legacy `submit_for` labels are preserved rather than hard-coded.
+Local metadata, hook, validation, error-redaction, and package evidence is complete. The user-reported Company Find Emails branch demonstrated submission, completed/ready status, task-ID retrieval, and one returned email for `n8n.io`; this was not agent-observed. Person paid creation, other Company cases, broader task states and failures, and the Person discovery-to-contact handoff remain pending. The user accepted Person → Find Decision Makers live paid validation as a disclosed 0.1.0 gap: it will be tested with the exact npm-published 0.1.0 artifact after publication and must pass before Creator Portal submission. Find Emails' conflicting current/legacy `submit_for` labels are preserved rather than hard-coded.
 
 ## Remaining 0.1.0 planned work
 
 The usefulness-first prospecting core consolidates paid email and decision-maker creation under Company and Person, adds brand Company Search and Company Enrich, and adds asynchronous known-person enrichment. Bounded cursor pagination is implemented locally for Business and Company Search with opt-in Return All, global Limit enforcement, deduplication, exhaustion/repeated-cursor guards, and atomic page failures. User-reported n8n execution covers the Company Find Emails retrieval chain, Business Search page-two continuation with a total Limit of 101, the post-fix Company Search positive first page with cursor exposure, and an empty/no-match Company Enrich run. Both Person operations, live Company Search page-two continuation and preview-key entitlement, positive Company Enrich results, Search credit behavior, and broader live compatibility remain pending.
 
 - Live-test Company Search page-two continuation and preview-key entitlement, and document Search credit behavior; Business page two has user-reported evidence and local pagination contracts are complete.
-- Complete authorized live validation and the release gates for the discovery-to-email-data chain.
+- After npm publication, live-test Person → Find Decision Makers using the exact immutable 0.1.0 artifact before Creator Portal submission. If the test requires code or documentation changes, publish a new immutable version (expected 0.1.1) and submit that exact version instead; do not replace 0.1.0.
 
 ## Future releases / backburner
 

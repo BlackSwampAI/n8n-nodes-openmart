@@ -43,7 +43,7 @@ The user subsequently reported that a real-n8n Business Search with total Limit 
 
 The user later reported that Company Find Emails submission succeeded for `n8n.io`, Batch Get Status progressed to completed and ready, Batch Get Task IDs succeeded, and Task Get returned one email. This is user-reported live evidence, not an authenticated response observed by the agent. Other task states, status filters, partial failures, and missing/empty results remain unresolved. The user also reported that Company Enrich for `blackswampai.com` completed as a valid empty/no-match response; no positive enrichment match has been demonstrated.
 
-Availability of `https://blackswampai.com/n8n-nodes/openmart/` was not independently confirmed on September 6, 2026. Direct retrieval was tool-blocked, and a scoped search found no indexed result; neither outcome proves that the page is absent.
+On September 9, 2026, an orchestrator `curl --head --location` request to `https://blackswampai.com/n8n-nodes/openmart/` returned HTTP 200 with `Content-Type: text/html`. This establishes reachability at that time, not correctness of the rendered content or its npm or Creator Portal presentation.
 
 ## Open questions
 
@@ -52,8 +52,8 @@ Availability of `https://blackswampai.com/n8n-nodes/openmart/` was not independe
 - Business Search page-two continuation and a total Limit of 101 have user-reported live validation. Return All, exact request logs, credit behavior, and pagination error paths remain unverified.
 - Endpoint/account entitlements and billing effects.
 - The Company Find Emails path demonstrated one user-reported completed/ready batch, task-ID retrieval, and Task Get email result. Other state transitions, status-filter behavior, tracking IDs, partial failures, and missing/empty results require live validation.
-- Person → Find Decision Makers remains unexercised against the live paid endpoint. Find Emails' documented `submit_for` labels remain ambiguous beyond the reported successful submission; the response validator deliberately accepts any nonblank label. `notify_url` is not exposed.
-- The 0.1.0 release requires a demonstrated Search → email/contact discovery → downstream data handoff, with fixtures and workflow evidence for both branches where appropriate. Sending outreach remains outside this node. Company Emails returns generic shared mailbox `{email,status}` records; Find Decision Makers returns named individual contacts and emails.
+- Person → Find Decision Makers remains unexercised against the live paid endpoint and is an explicitly accepted, disclosed 0.1.0 gap. It will be tested with the exact npm-published 0.1.0 artifact and is a hard gate before Creator Portal submission. If changes are required, publish a new immutable version (expected 0.1.1) and submit that exact version; 0.1.0 cannot be overwritten. Find Emails' documented `submit_for` labels remain ambiguous beyond the reported successful submission; the response validator deliberately accepts any nonblank label. `notify_url` is not exposed.
+- The Company Find Emails discovery-to-email path has user-reported live evidence. The Person discovery branch remains a disclosed post-publication, pre-Portal gate. Sending outreach remains outside this node. Company Emails returns generic shared mailbox `{email,status}` records; Find Decision Makers returns named individual contacts and emails.
 - Business Get is formally deferred from 0.1.0 and is not advertised because no supported declarative transport preserves its required GET JSON-array body. It can be reconsidered if Openmart offers POST/query transport or n8n's modern authenticated helper begins preserving GET bodies.
 
 ## Future releases / backburner

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 - 2026-09-09
 
 - Add bounded declarative cursor pagination for Business and Company Search with standard Return All/Limit controls, global limits, cursor validation, deduplication, and page-count safety.
 - Replace the generated SVG icons with byte-identical light/dark packaging copies of Openmart's official color PNG mark.

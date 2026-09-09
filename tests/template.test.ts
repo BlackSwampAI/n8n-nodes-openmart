@@ -65,7 +65,10 @@ describe('generated package safety and tooling', () => {
 		expect(releaseCheck).toContain('still contains template placeholders');
 		expect(releaseCheck).toContain('remove template source document');
 		expect(releaseCheck).toContain('raw template must retain');
-		expect(readme).toContain('Distribution is unavailable');
+		expect(readme).toContain('@blackswampai/n8n-nodes-openmart');
+		expect(readme).toContain(
+			'https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation/',
+		);
 		expect(readme).toContain('https://blackswampai.com/n8n-nodes/openmart/');
 	});
 
