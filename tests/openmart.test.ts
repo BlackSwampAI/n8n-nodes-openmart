@@ -40,13 +40,16 @@ describe('Openmart node contract', () => {
 			'getCreditBalance',
 			'search',
 			'get',
-			'create',
-			'create',
+			'findEmails',
+			'search',
+			'enrich',
+			'findDecisionMakers',
+			'enrich',
 		]);
 		for (const operation of advertised) expect(operation).toHaveProperty('routing.request');
 		const routeByValue = Object.fromEntries(
 			advertised
-				.filter((option) => !('value' in option) || option.value !== 'create')
+				.slice(0, 5)
 				.map((option) => [
 					'value' in option ? option.value : '',
 					'routing' in option ? option.routing : undefined,
@@ -78,9 +81,9 @@ describe('Openmart node contract', () => {
 				output: { postReceive: [receiveTask] },
 			},
 		});
-		const creationRoutes = advertised
-			.filter((option) => 'value' in option && option.value === 'create')
-			.map((option) => ('routing' in option ? option.routing : undefined));
+		const creationRoutes = [advertised[5], advertised[8]].map((option) =>
+			option && 'routing' in option ? option.routing : undefined,
+		);
 		expect(creationRoutes).toEqual([
 			{
 				request: {

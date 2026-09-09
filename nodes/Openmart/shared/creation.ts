@@ -18,6 +18,11 @@ export interface PeopleSearchInput extends CreationInput {
 	infoAccess: unknown;
 }
 
+export interface KnownPeopleInput extends CreationInput {
+	people: unknown;
+	infoAccess: unknown;
+}
+
 function validationError(operation: string, message: string): OpenmartRequestError {
 	return new OpenmartRequestError(
 		`Openmart ${operation} validation failed: ${message}.`,
@@ -103,7 +108,7 @@ function addOptionalContext(
 }
 
 export function buildPeopleSearchTask(input: PeopleSearchInput): IDataObject {
-	const operation = 'People Search Create';
+	const operation = 'Person Find Decision Makers';
 	const maxK = input.maxK;
 	if (typeof maxK !== 'number' || !Number.isInteger(maxK) || maxK < 1 || maxK > 8) {
 		throw validationError(operation, 'Max Contacts must be an integer from 1 through 8');
@@ -125,12 +130,44 @@ export function buildPeopleSearchTask(input: PeopleSearchInput): IDataObject {
 }
 
 export function buildCompanyEmailTask(input: CreationInput): IDataObject {
-	const operation = 'Company Email Create';
+	const operation = 'Company Find Emails';
 	const task: IDataObject = {
 		domain: normalizeDomain(input.domain, operation),
 		company_name: requiredString(input.companyName, 'Company Name', operation),
 	};
 	return addOptionalContext(task, { ...input, companyName: undefined }, operation);
+}
+
+export function buildKnownPeopleTask(input: KnownPeopleInput): IDataObject {
+	const operation = 'Person Enrich';
+	if (
+		!Array.isArray(input.infoAccess) ||
+		!input.infoAccess.length ||
+		input.infoAccess.some((v) => v !== 'EMAIL' && v !== 'PHONE')
+	) {
+		throw validationError(operation, 'Contact Information must include EMAIL, PHONE, or both');
+	}
+	const rawPeople = record(input.people)?.person;
+	if (!Array.isArray(rawPeople) || rawPeople.length < 1 || rawPeople.length > 8) {
+		throw validationError(operation, 'People must contain 1 through 8 entries');
+	}
+	const people = rawPeople.map((candidate, index) => {
+		const person = record(candidate);
+		const suffix = ` for person ${index + 1}`;
+		return {
+			first_name: requiredString(person?.firstName, `First Name${suffix}`, operation),
+			last_name: requiredString(person?.lastName, `Last Name${suffix}`, operation),
+			...(optionalString(person?.linkedinUrl, `LinkedIn URL${suffix}`, operation)
+				? { linkedin_url: optionalString(person?.linkedinUrl, `LinkedIn URL${suffix}`, operation) }
+				: {}),
+		};
+	});
+	const task: IDataObject = {
+		domain: normalizeDomain(input.domain, operation),
+		people,
+		info_access: [...new Set(input.infoAccess as InfoAccess[])],
+	};
+	return addOptionalContext(task, input, operation);
 }
 
 export function parseBatchSubmission(value: unknown, operation: string): IDataObject {

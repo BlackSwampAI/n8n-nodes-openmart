@@ -3,12 +3,18 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	prepareBatchStatus,
 	prepareCompanyEmail,
+	prepareCompanyEnrich,
+	prepareCompanySearch,
+	prepareKnownPeople,
 	preparePeopleSearch,
 	prepareSearch,
 	prepareTask,
 	prepareTaskIds,
 	receiveBatchStatus,
 	receiveCompanyEmail,
+	receiveCompanyEnrich,
+	receiveCompanySearch,
+	receiveKnownPeople,
 	receiveCreditBalance,
 	receiveSearch,
 	receivePeopleSearch,
@@ -47,8 +53,8 @@ export class Openmart implements INodeType {
 					{ name: 'Account', value: 'account' },
 					{ name: 'Batch', value: 'batch' },
 					{ name: 'Business', value: 'business' },
-					{ name: 'Company Email', value: 'companyEmail' },
-					{ name: 'People Search', value: 'peopleSearch' },
+					{ name: 'Company', value: 'company' },
+					{ name: 'Person', value: 'person' },
 					{ name: 'Task', value: 'task' },
 				],
 				default: 'account',
@@ -171,13 +177,13 @@ export class Openmart implements INodeType {
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				displayOptions: { show: { resource: ['companyEmail'] } },
+				displayOptions: { show: { resource: ['company'] } },
 				options: [
 					{
-						name: 'Create',
-						value: 'create',
+						name: 'Find Emails',
+						value: 'findEmails',
 						description: 'Create paid background work to find generic shared inbox addresses',
-						action: 'Create a company email search',
+						action: 'Find company emails',
 						routing: {
 							request: {
 								method: 'POST',
@@ -188,21 +194,45 @@ export class Openmart implements INodeType {
 							output: { postReceive: [receiveCompanyEmail] },
 						},
 					},
+					{
+						name: 'Search',
+						value: 'search',
+						description:
+							'Return one row per brand; use Business Search for local or store-level leads',
+						action: 'Search companies',
+						routing: {
+							request: { method: 'POST', url: '/api/v2/brands/search' },
+							send: { preSend: [prepareCompanySearch] },
+							output: { postReceive: [receiveCompanySearch] },
+						},
+					},
+					{
+						name: 'Enrich',
+						value: 'enrich',
+						description:
+							'Match existing Openmart records from a website or social media link; does not crawl arbitrary sites',
+						action: 'Enrich a company',
+						routing: {
+							request: { method: 'POST', url: '/api/v1/enrich_company' },
+							send: { preSend: [prepareCompanyEnrich] },
+							output: { postReceive: [receiveCompanyEnrich] },
+						},
+					},
 				],
-				default: 'create',
+				default: 'search',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				displayOptions: { show: { resource: ['peopleSearch'] } },
+				displayOptions: { show: { resource: ['person'] } },
 				options: [
 					{
-						name: 'Create',
-						value: 'create',
+						name: 'Find Decision Makers',
+						value: 'findDecisionMakers',
 						description: 'Create paid background work to find decision makers',
-						action: 'Create a people search',
+						action: 'Find decision makers',
 						routing: {
 							request: {
 								method: 'POST',
@@ -213,17 +243,38 @@ export class Openmart implements INodeType {
 							output: { postReceive: [receivePeopleSearch] },
 						},
 					},
+					{
+						name: 'Enrich Known Person',
+						value: 'enrich',
+						description: 'Create paid background work to enrich known people',
+						action: 'Enrich known people',
+						routing: {
+							request: { method: 'POST', url: '/api/v1/task/batch/lookup_people', timeout: 90_000 },
+							send: { preSend: [prepareKnownPeople] },
+							output: { postReceive: [receiveKnownPeople] },
+						},
+					},
 				],
-				default: 'create',
+				default: 'findDecisionMakers',
 			},
 			{
 				displayName:
-					'Each input item creates one potentially charged background task. Retries or manual reruns can duplicate charged work. This operation does not wait for results.',
+					'Each input item creates one potentially charged background task. Retries or manual reruns can duplicate charged work. Retrieve results with Batch Get Status → Batch Get Task IDs → Task Get.',
 				name: 'paidCreationNotice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
-					show: { resource: ['companyEmail', 'peopleSearch'], operation: ['create'] },
+					show: { resource: ['company'], operation: ['findEmails'] },
+				},
+			},
+			{
+				displayName:
+					'Each input item creates one potentially charged background task. Retries or manual reruns can duplicate charged work. Retrieve results with Batch Get Status → Batch Get Task IDs → Task Get.',
+				name: 'paidPersonNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: { resource: ['person'], operation: ['findDecisionMakers', 'enrich'] },
 				},
 			},
 			{
@@ -234,7 +285,18 @@ export class Openmart implements INodeType {
 				required: true,
 				description: 'Company hostname or HTTP/HTTPS URL; normalized to a hostname',
 				displayOptions: {
-					show: { resource: ['companyEmail', 'peopleSearch'], operation: ['create'] },
+					show: { resource: ['company'], operation: ['findEmails'] },
+				},
+			},
+			{
+				displayName: 'Domain',
+				name: 'domain',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'Company hostname or HTTP/HTTPS URL; normalized to a hostname',
+				displayOptions: {
+					show: { resource: ['person'], operation: ['findDecisionMakers', 'enrich'] },
 				},
 			},
 			{
@@ -243,7 +305,7 @@ export class Openmart implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				displayOptions: { show: { resource: ['companyEmail'], operation: ['create'] } },
+				displayOptions: { show: { resource: ['company'], operation: ['findEmails'] } },
 			},
 			{
 				displayName: 'Company Name',
@@ -251,7 +313,9 @@ export class Openmart implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'Optional company name to help narrow the people search',
-				displayOptions: { show: { resource: ['peopleSearch'], operation: ['create'] } },
+				displayOptions: {
+					show: { resource: ['person'], operation: ['findDecisionMakers', 'enrich'] },
+				},
 			},
 			{
 				displayName: 'Title',
@@ -259,7 +323,7 @@ export class Openmart implements INodeType {
 				type: 'string',
 				default: 'Owner or decision maker',
 				required: true,
-				displayOptions: { show: { resource: ['peopleSearch'], operation: ['create'] } },
+				displayOptions: { show: { resource: ['person'], operation: ['findDecisionMakers'] } },
 			},
 			{
 				displayName: 'Max Contacts',
@@ -268,7 +332,7 @@ export class Openmart implements INodeType {
 				default: 1,
 				required: true,
 				typeOptions: { minValue: 1, maxValue: 8 },
-				displayOptions: { show: { resource: ['peopleSearch'], operation: ['create'] } },
+				displayOptions: { show: { resource: ['person'], operation: ['findDecisionMakers'] } },
 			},
 			{
 				displayName: 'Contact Information',
@@ -281,7 +345,9 @@ export class Openmart implements INodeType {
 					{ name: 'Phone', value: 'PHONE' },
 				],
 				description: 'Contact information types to request',
-				displayOptions: { show: { resource: ['peopleSearch'], operation: ['create'] } },
+				displayOptions: {
+					show: { resource: ['person'], operation: ['findDecisionMakers', 'enrich'] },
+				},
 			},
 			{
 				displayName: 'City',
@@ -289,7 +355,7 @@ export class Openmart implements INodeType {
 				type: 'string',
 				default: '',
 				displayOptions: {
-					show: { resource: ['companyEmail', 'peopleSearch'], operation: ['create'] },
+					show: { resource: ['company'], operation: ['findEmails'] },
 				},
 			},
 			{
@@ -297,8 +363,10 @@ export class Openmart implements INodeType {
 				name: 'state',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. CA',
+				description: 'For US locations, use the two-letter state code (for example, CA)',
 				displayOptions: {
-					show: { resource: ['companyEmail', 'peopleSearch'], operation: ['create'] },
+					show: { resource: ['company'], operation: ['findEmails'] },
 				},
 			},
 			{
@@ -307,7 +375,7 @@ export class Openmart implements INodeType {
 				type: 'string',
 				default: '',
 				displayOptions: {
-					show: { resource: ['companyEmail', 'peopleSearch'], operation: ['create'] },
+					show: { resource: ['company'], operation: ['findEmails'] },
 				},
 			},
 			{
@@ -317,8 +385,200 @@ export class Openmart implements INodeType {
 				default: '',
 				description: 'Optional caller-defined correlation ID',
 				displayOptions: {
-					show: { resource: ['companyEmail', 'peopleSearch'], operation: ['create'] },
+					show: { resource: ['company'], operation: ['findEmails'] },
 				},
+			},
+			...['city', 'state', 'country', 'trackingId'].map((name) => ({
+				displayName: (
+					{ city: 'City', state: 'State', country: 'Country', trackingId: 'Tracking ID' } as const
+				)[name]!,
+				name,
+				type: 'string' as const,
+				default: '',
+				...(name === 'state'
+					? {
+							placeholder: 'e.g. CA',
+							description: 'For US locations, use the two-letter state code (for example, CA)',
+						}
+					: {}),
+				displayOptions: {
+					show: { resource: ['person'], operation: ['findDecisionMakers', 'enrich'] },
+				},
+			})),
+			{
+				displayName: 'People',
+				name: 'people',
+				type: 'fixedCollection',
+				default: {},
+				required: true,
+				placeholder: 'Add Person',
+				typeOptions: { multipleValues: true },
+				displayOptions: { show: { resource: ['person'], operation: ['enrich'] } },
+				options: [
+					{
+						displayName: 'Person',
+						name: 'person',
+						values: [
+							{
+								displayName: 'First Name',
+								name: 'firstName',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Last Name',
+								name: 'lastName',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+							{ displayName: 'LinkedIn URL', name: 'linkedinUrl', type: 'string', default: '' },
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Search Term',
+				name: 'companySearchTerm',
+				type: 'string',
+				default: '',
+				description: 'Brand-level relevance term',
+				displayOptions: { show: { resource: ['company'], operation: ['search'] } },
+			},
+			{
+				displayName: 'Location',
+				name: 'companySearchLocation',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add Location',
+				typeOptions: { multipleValues: false },
+				displayOptions: { show: { resource: ['company'], operation: ['search'] } },
+				options: [
+					{
+						displayName: 'Location',
+						name: 'locationValues',
+						values: [
+							{ displayName: 'Country', name: 'country', type: 'string', default: 'US' },
+							{
+								displayName: 'State',
+								name: 'state',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. CA',
+								description: 'For US locations, use the two-letter state code (for example, CA)',
+							},
+							{ displayName: 'City', name: 'city', type: 'string', default: '' },
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Ownership Type',
+				name: 'ownershipType',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{ name: 'Chain', value: 'CHAIN' },
+					{ name: 'Family', value: 'FAMILY' },
+					{ name: 'Franchise', value: 'FRANCHISE' },
+					{ name: 'Independent', value: 'INDEPENDENT' },
+				],
+				displayOptions: { show: { resource: ['company'], operation: ['search'] } },
+			},
+			{
+				displayName: 'Store Count',
+				name: 'storeCount',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Store Count Filter',
+				options: [
+					{
+						displayName: 'Maximum Store Count',
+						name: 'maximumStores',
+						type: 'number',
+						default: 0,
+						typeOptions: { minValue: 0 },
+					},
+					{
+						displayName: 'Minimum Store Count',
+						name: 'minimumStores',
+						type: 'number',
+						default: 0,
+						typeOptions: { minValue: 0 },
+					},
+				],
+				displayOptions: { show: { resource: ['company'], operation: ['search'] } },
+			},
+			...['hasStaffInfo', 'hasBusinessEmail', 'hasBusinessPhone'].map((name, index) => ({
+				displayName: ['Has Staff Info', 'Has Business Email', 'Has Business Phone'][index]!,
+				name,
+				type: 'options' as const,
+				default: '',
+				options: [
+					{ name: 'Any', value: '' },
+					{ name: 'Yes', value: true },
+					{ name: 'No', value: false },
+				],
+				displayOptions: { show: { resource: ['company'], operation: ['search'] } },
+			})),
+			{
+				displayName: 'Limit',
+				name: 'companySearchLimit',
+				type: 'number',
+				default: 10,
+				typeOptions: { minValue: 1, maxValue: 100 },
+				description: 'Maximum brand-level companies to return from the first page',
+				displayOptions: { show: { resource: ['company'], operation: ['search'] } },
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['company'], operation: ['enrich'] } },
+			},
+			{
+				displayName: 'Social Media Link',
+				name: 'socialMediaLink',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['company'], operation: ['enrich'] } },
+			},
+			{
+				displayName: 'Location',
+				name: 'companyEnrichLocation',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add Location',
+				typeOptions: { multipleValues: false },
+				displayOptions: { show: { resource: ['company'], operation: ['enrich'] } },
+				options: [
+					{
+						displayName: 'Location',
+						name: 'locationValues',
+						values: [
+							{ displayName: 'Country', name: 'country', type: 'string', default: '' },
+							{
+								displayName: 'State',
+								name: 'state',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. CA',
+								description: 'For US locations, use the two-letter state code (for example, CA)',
+							},
+							{ displayName: 'City', name: 'city', type: 'string', default: '' },
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Limit',
+				name: 'companyEnrichLimit',
+				type: 'number',
+				default: 10,
+				typeOptions: { minValue: 1, maxValue: 50 },
+				displayOptions: { show: { resource: ['company'], operation: ['enrich'] } },
 			},
 			{
 				displayName: 'Task ID',
@@ -361,7 +621,14 @@ export class Openmart implements INodeType {
 						name: 'locationValues',
 						values: [
 							{ displayName: 'Country', name: 'country', type: 'string', default: '' },
-							{ displayName: 'State', name: 'state', type: 'string', default: '' },
+							{
+								displayName: 'State',
+								name: 'state',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. CA',
+								description: 'For US locations, use the two-letter state code (for example, CA)',
+							},
 							{ displayName: 'City', name: 'city', type: 'string', default: '' },
 						],
 					},

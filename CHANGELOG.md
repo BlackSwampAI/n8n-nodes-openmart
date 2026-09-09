@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Consolidate prospecting under Company and Person resources; add brand-level Company Search, Company Enrich, and known-person enrichment.
+- Prevent blank Company Search store-count controls from materializing as an unintended zero-store filter; clarify brand/store semantics, enrichment scope, state guidance, and async result retrieval.
 - Add declarative Company Email Create and People Search Create operations with normalized domains, one-task submissions, validated batch envelopes, and no internal retries.
 - Convert all existing operations to declarative routing and remove custom safe-read retries.
 - Add Batch Get Status, Batch Get Task IDs, and Task Get with validated responses and declarative item handling.

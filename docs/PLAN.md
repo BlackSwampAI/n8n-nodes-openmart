@@ -22,13 +22,15 @@ Implemented the release-critical shared retrieval chain: Batch/Get Status, Batch
 
 ## Batch 5 — complete locally: email and contact discovery
 
-Implemented Company Email Create using `POST /api/v1/task/batch/lookup_business_email`. Each n8n input item creates one paid asynchronous task with required normalized `domain` and `company_name`; city, state, country, and `tracking_id` are optional. The submission envelope is validated and returned with normalized submitted context. `notify_url` is not exposed.
+Implemented Company → Find Emails using `POST /api/v1/task/batch/lookup_business_email`. Each n8n input item creates one paid asynchronous task with required normalized `domain` and `company_name`; city, state, country, and `tracking_id` are optional. The submission envelope is validated and returned with normalized submitted context. `notify_url` is not exposed.
 
-Implemented People Search Create using `POST /api/v1/task/batch/find_people`, with required domain, title, `max_k` from 1 through 8, and explicit email/phone access selection. Both creation paths use a 90-second submission timeout, create no internal retry or polling behavior, and return through the shared Batch Status → Task IDs → Task Get lifecycle.
+Implemented Person → Find Decision Makers using `POST /api/v1/task/batch/find_people`, with required domain, title, `max_k` from 1 through 8, and explicit email/phone access selection. Both creation paths use a 90-second submission timeout, create no internal retry or polling behavior, and return through the shared Batch Status → Task IDs → Task Get lifecycle.
 
-Local metadata, hook, validation, error-redaction, and package evidence is complete. Live paid creation, actual task results, and the release-critical Search → email/contact discovery → downstream data handoff remain pending. Company Email's conflicting current/legacy `submit_for` labels are preserved rather than hard-coded.
+Local metadata, hook, validation, error-redaction, and package evidence is complete. The user-reported Company Find Emails branch demonstrated submission, completed/ready status, task-ID retrieval, and one returned email for `n8n.io`; this was not agent-observed. Person paid creation, other Company cases, broader task states and failures, and the Person discovery-to-contact handoff remain pending. Find Emails' conflicting current/legacy `submit_for` labels are preserved rather than hard-coded.
 
 ## Remaining 0.1.0 planned work
+
+The usefulness-first prospecting core consolidates paid email and decision-maker creation under Company and Person, adds first-page brand Company Search and Company Enrich, and adds asynchronous known-person enrichment. Local contracts are complete. User-reported n8n execution covers the Company Find Emails retrieval chain, the post-fix Company Search positive path with cursor exposure, and an empty/no-match Company Enrich run. Both Person operations, Company Search cursor continuation and other filters/cases, positive Company Enrich results, and broader live compatibility remain pending.
 
 - Add bounded Search cursor pagination after live validation establishes continuation and credit behavior, with repeated-cursor, exhaustion, page-failure, and partial-result policy tests.
 - Decide Business Get transport deliberately. The recommended n8n 2.37.10 authenticated helper strips its documented GET array body, while deprecated legacy transport preserves it in loopback; neither a legacy implementation nor an invented POST/query fallback is selected here.
@@ -36,4 +38,4 @@ Local metadata, hook, validation, error-redaction, and package evidence is compl
 
 ## Future releases / backburner
 
-Do not advertise these documentation-identified operations as implemented: Detect Tech Stack; Search Business IDs Fast; Get by Google Place ID; Enrich Company; Enrich Known People; Search Companies; Create Deny Rules; Check Deny Rules; Delete Deny Rules.
+Do not advertise these documentation-identified operations as implemented: Detect Tech Stack; Search Business IDs Fast; Get by Google Place ID; Create Deny Rules; Check Deny Rules; Delete Deny Rules.

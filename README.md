@@ -12,11 +12,11 @@ Distribution is unavailable. There is no supported public installation path for 
 
 ## Compatibility
 
-| Surface             | Tested baseline                          | Notes                                                                                                   |
-| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| n8n                 | 2.37.10                                  | Disposable server metadata confirmed discovery and icon URLs; no visual editor execution was performed. |
-| Openmart API        | Documentation reviewed September 7, 2026 | The user reports successful credential save, Balance, and Business Search; paid creation was not run.   |
-| Node.js development | 22.22.0 and 24                           | Repository CI targets both versions; local results are recorded in [testing notes](docs/testing.md).    |
+| Surface             | Tested baseline                          | Notes                                                                                                                     |
+| ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| n8n                 | 2.37.10                                  | Disposable server metadata confirmed discovery and icon URLs; no visual editor execution was performed.                   |
+| Openmart API        | Documentation reviewed September 9, 2026 | User-reported live success covers credential save, Balance, Business Search, and the Company Find Emails retrieval chain. |
+| Node.js development | 22.22.0 and 24                           | Repository CI targets both versions; local results are recorded in [testing notes](docs/testing.md).                      |
 
 ## Credentials
 
@@ -28,8 +28,11 @@ Never commit API keys or real prospect data.
 
 - **Account → Get Credit Balance** returns Openmart's `period_start`, `period_end`, and integer `balance` fields without converting credits to currency.
 - **Business → Search** submits a required query with an optional location and initial website/contact/location-count filters, then returns one n8n item per provider business.
-- **Company Email → Create** starts paid background work to find generic shared inbox addresses and returns its batch submission envelope.
-- **People Search → Create** starts paid background work to find decision makers and returns its batch submission envelope.
+- **Company → Search** returns first-page brand-level company records, not physical stores.
+- **Company → Enrich** matches company records from a website or social-media link.
+- **Company → Find Emails** starts paid background work to find generic shared inbox addresses.
+- **Person → Find Decision Makers** starts paid background work to discover contacts by title.
+- **Person → Enrich Known Person** starts paid background work for 1–8 named people.
 - **Batch → Get Status** returns readiness and progress counts plus the normalized requested `batch_id` for direct chaining.
 - **Batch → Get Task IDs** optionally filters by a free-text status such as `COMPLETED`, then emits one `{task_id,batch_id}` item per returned task for direct chaining.
 - **Task → Get** returns the full provider task envelope, including available result data.
@@ -46,7 +49,9 @@ Business Search accepts a 1–500 character query and returns only its first pag
 
 Batch and Task reads require an existing ID. Declarative routing may schedule multiple input-item requests concurrently. IDs are trimmed and encoded as one URL path segment. The node does not poll or retry internally: chain Get Status, Get Task IDs, and Task Get explicitly according to workflow needs.
 
-Company Email and People Search consume Openmart credits and create background work. Each input item submits exactly one task and returns immediately after Openmart accepts the batch; use the Batch and Task operations to retrieve results. The 90-second request timeout accommodates documented submission latency, but it does not poll. These creation requests have no internal retry. Enabling n8n **Retry On Fail** or manually rerunning an execution can create and charge for duplicate work, so verify the batch outcome before retrying.
+Company Find Emails and both Person operations consume Openmart credits and create background work. Each input item submits exactly one task and returns after Openmart accepts the batch; retrieve results with **Batch → Get Status**, **Batch → Get Task IDs**, then **Task → Get**. The 90-second request timeout accommodates documented submission latency but does not poll. Enabling n8n **Retry On Fail** or manually rerunning can create and charge for duplicate work.
+
+Company Search is brand-level targeting and emits one row per brand; use Business Search for local or store-level leads. It requires a search term or an explicit narrowing filter beyond the default US country. For US locations, use a two-letter state code such as `CA` or `OH`; non-US region names remain accepted. Moving optional store-count fields into an opt-in collection removed an unintended filter, and the user reported that a post-fix real-n8n search returned Cable Car Coffee SF plus `openmart_next_cursor`. This was not agent-observed and does not validate other filters, empty cases, continuation, or credit behavior. Company Search returns only the first page and copies the provider's next cursor to each emitted company; cursor input and automatic pagination are not implemented. Company Enrich matches existing Openmart records using a website or social link; it does not crawl an arbitrary site, and likewise returns only its first raw-array page.
 
 ## Troubleshooting
 
