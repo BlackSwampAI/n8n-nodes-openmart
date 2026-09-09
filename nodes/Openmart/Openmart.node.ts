@@ -27,7 +27,7 @@ export class Openmart implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Openmart',
 		name: 'openmart',
-		icon: { light: 'file:openmart.svg', dark: 'file:openmart.dark.svg' },
+		icon: { light: 'file:openmart.png', dark: 'file:openmart.dark.png' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

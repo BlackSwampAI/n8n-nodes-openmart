@@ -24,6 +24,14 @@ const response = (body: unknown, statusCode = 200) =>
 describe('Openmart node contract', () => {
 	it('advertises the routed operations and fixed production transport', () => {
 		const description = new Openmart().description;
+		expect(description.icon).toEqual({
+			light: 'file:openmart.png',
+			dark: 'file:openmart.dark.png',
+		});
+		expect(new OpenmartApi().icon).toEqual({
+			light: 'file:../nodes/Openmart/openmart.png',
+			dark: 'file:../nodes/Openmart/openmart.dark.png',
+		});
 		expect(description.credentials).toEqual([{ name: 'openmartApi', required: true }]);
 		expect(description.requestDefaults).toEqual({
 			baseURL: 'https://api.openmart.ai',

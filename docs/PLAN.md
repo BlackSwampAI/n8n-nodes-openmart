@@ -8,7 +8,7 @@ Convert the template, remove demonstrations, add the Openmart credential and Acc
 
 Harden credential and transport errors, redaction behavior, response validation, and item context. Prove n8n's authenticated helper GET-body behavior against a recording server and run a disposable n8n 2.37.10 metadata/icon smoke. Live balance validation remains guarded without an API key.
 
-The recommended `httpRequestWithAuthentication` path in n8n 2.37.10 drops GET bodies, while a loopback probe showed that the deprecated legacy transport preserves them. Business Get therefore remains a supported-path compatibility decision; do not choose its transport or advertise it until that decision is reviewed.
+The recommended `httpRequestWithAuthentication` path in n8n 2.37.10 drops GET bodies, while a loopback probe showed that the deprecated legacy transport preserves them. The reviewed outcome is to defer Business Get from 0.1.0 rather than adopt deprecated transport or invent an unsupported fallback.
 
 ## Batch 3 — complete locally
 
@@ -33,9 +33,8 @@ Local metadata, hook, validation, error-redaction, and package evidence is compl
 The usefulness-first prospecting core consolidates paid email and decision-maker creation under Company and Person, adds first-page brand Company Search and Company Enrich, and adds asynchronous known-person enrichment. Local contracts are complete. User-reported n8n execution covers the Company Find Emails retrieval chain, the post-fix Company Search positive path with cursor exposure, and an empty/no-match Company Enrich run. Both Person operations, Company Search cursor continuation and other filters/cases, positive Company Enrich results, and broader live compatibility remain pending.
 
 - Add bounded Search cursor pagination after live validation establishes continuation and credit behavior, with repeated-cursor, exhaustion, page-failure, and partial-result policy tests.
-- Decide Business Get transport deliberately. The recommended n8n 2.37.10 authenticated helper strips its documented GET array body, while deprecated legacy transport preserves it in loopback; neither a legacy implementation nor an invented POST/query fallback is selected here.
 - Complete authorized live validation and the release gates for the discovery-to-email-data chain.
 
 ## Future releases / backburner
 
-Do not advertise these documentation-identified operations as implemented: Detect Tech Stack; Search Business IDs Fast; Get by Google Place ID; Create Deny Rules; Check Deny Rules; Delete Deny Rules.
+Do not advertise these documentation-identified operations as implemented: Business Get; Detect Tech Stack; Search Business IDs Fast; Get by Google Place ID; Create Deny Rules; Check Deny Rules; Delete Deny Rules. Business Get can be reconsidered if Openmart offers a POST/query contract or n8n's modern authenticated helper preserves required GET JSON-array bodies.
