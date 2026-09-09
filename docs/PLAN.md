@@ -30,9 +30,9 @@ Local metadata, hook, validation, error-redaction, and package evidence is compl
 
 ## Remaining 0.1.0 planned work
 
-The usefulness-first prospecting core consolidates paid email and decision-maker creation under Company and Person, adds first-page brand Company Search and Company Enrich, and adds asynchronous known-person enrichment. Local contracts are complete. User-reported n8n execution covers the Company Find Emails retrieval chain, the post-fix Company Search positive path with cursor exposure, and an empty/no-match Company Enrich run. Both Person operations, Company Search cursor continuation and other filters/cases, positive Company Enrich results, and broader live compatibility remain pending.
+The usefulness-first prospecting core consolidates paid email and decision-maker creation under Company and Person, adds brand Company Search and Company Enrich, and adds asynchronous known-person enrichment. Bounded cursor pagination is implemented locally for Business and Company Search with opt-in Return All, global Limit enforcement, deduplication, exhaustion/repeated-cursor guards, and atomic page failures. User-reported n8n execution covers the Company Find Emails retrieval chain, Business Search page-two continuation with a total Limit of 101, the post-fix Company Search positive first page with cursor exposure, and an empty/no-match Company Enrich run. Both Person operations, live Company Search page-two continuation and preview-key entitlement, positive Company Enrich results, Search credit behavior, and broader live compatibility remain pending.
 
-- Add bounded Search cursor pagination after live validation establishes continuation and credit behavior, with repeated-cursor, exhaustion, page-failure, and partial-result policy tests.
+- Live-test Company Search page-two continuation and preview-key entitlement, and document Search credit behavior; Business page two has user-reported evidence and local pagination contracts are complete.
 - Complete authorized live validation and the release gates for the discovery-to-email-data chain.
 
 ## Future releases / backburner

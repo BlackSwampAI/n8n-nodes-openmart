@@ -1,11 +1,13 @@
 import type {
+	DeclarativeRestApiSettings,
 	IDataObject,
+	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { mapOpenmartError, parseCreditBalance } from '../shared/request';
+import { mapOpenmartError, OpenmartRequestError, parseCreditBalance } from '../shared/request';
 import {
 	buildCompanyEmailTask,
 	buildKnownPeopleTask,
@@ -36,6 +38,140 @@ function assertSuccessful(response: IN8nHttpFullResponse, operation: string): vo
 
 function output(json: IDataObject): INodeExecutionData {
 	return { json };
+}
+
+const SEARCH_PAGE_SIZE = 100;
+const MAX_SEARCH_RESULTS = 1_000;
+const MAX_SEARCH_PAGES = 100;
+
+function paginationError(operation: string, message: string): OpenmartRequestError {
+	return new OpenmartRequestError(
+		`Openmart ${operation} pagination failed: ${message}.`,
+		undefined,
+		'invalid-response',
+	);
+}
+
+function paginationValidationError(operation: string, message: string): OpenmartRequestError {
+	return new OpenmartRequestError(
+		`Openmart ${operation} validation failed: ${message}.`,
+		undefined,
+		'validation',
+	);
+}
+
+function totalSearchLimit(
+	context: IExecuteSingleFunctions,
+	parameter: 'resultLimit' | 'companySearchLimit',
+	operation: string,
+): number | undefined {
+	if (context.getNodeParameter('returnAll') === true) return undefined;
+	const value = context.getNodeParameter(parameter);
+	if (
+		typeof value !== 'number' ||
+		!Number.isInteger(value) ||
+		value < 1 ||
+		value > MAX_SEARCH_RESULTS
+	) {
+		throw paginationValidationError(
+			operation,
+			`Limit must be an integer from 1 through ${MAX_SEARCH_RESULTS}`,
+		);
+	}
+	return value;
+}
+
+function pageSize(total: number | undefined, emitted = 0): number {
+	return Math.min(SEARCH_PAGE_SIZE, total === undefined ? SEARCH_PAGE_SIZE : total - emitted);
+}
+
+function requestWithBody(
+	requestOptions: DeclarativeRestApiSettings.ResultOptions,
+	body: IDataObject,
+): DeclarativeRestApiSettings.ResultOptions {
+	return { ...requestOptions, options: { ...requestOptions.options, body } };
+}
+
+function cursorKey(cursor: unknown, operation: string): string | undefined {
+	if (cursor === undefined || cursor === null || cursor === '') return undefined;
+	if (Array.isArray(cursor) && cursor.length === 0) return undefined;
+	if ((typeof cursor !== 'string' || !cursor.trim()) && !Array.isArray(cursor)) {
+		throw paginationError(operation, 'the API returned an invalid cursor');
+	}
+	return JSON.stringify(cursor);
+}
+
+function businessCursor(items: INodeExecutionData[]): unknown {
+	const cursor = items[items.length - 1]?.json.cursor;
+	if (cursor === undefined || cursor === null || (Array.isArray(cursor) && cursor.length === 0)) {
+		return undefined;
+	}
+	if (
+		!Array.isArray(cursor) ||
+		cursor.length !== 2 ||
+		typeof cursor[0] !== 'number' ||
+		!Number.isFinite(cursor[0]) ||
+		typeof cursor[1] !== 'string' ||
+		!cursor[1].trim()
+	) {
+		throw paginationError('Business Search', 'the API returned an invalid cursor');
+	}
+	return cursor;
+}
+
+function companyCursor(items: INodeExecutionData[]): unknown {
+	const cursor = items[items.length - 1]?.json.openmart_next_cursor;
+	if (cursor === undefined || cursor === null || cursor === '') return undefined;
+	if (typeof cursor !== 'string') {
+		throw paginationError('Company Search', 'the API returned an invalid cursor');
+	}
+	return cursor.trim() ? cursor : undefined;
+}
+
+async function paginateCursorSearch(
+	context: IExecutePaginationFunctions,
+	requestOptions: DeclarativeRestApiSettings.ResultOptions,
+	total: number | undefined,
+	operation: string,
+	nextCursor: (items: INodeExecutionData[]) => unknown,
+	nextBody: (body: IDataObject, cursor: unknown, limit: number) => IDataObject,
+	identity: (item: INodeExecutionData) => unknown,
+): Promise<INodeExecutionData[]> {
+	const emitted: INodeExecutionData[] = [];
+	const seen = new Set<string>();
+	const emittedIds = new Set<string>();
+	let current = requestOptions;
+	let pages = 0;
+	while (true) {
+		pages += 1;
+		const page = await context.makeRoutingRequest(current);
+		if (page.length === 0) return emitted;
+		for (const item of page) {
+			const candidateId = identity(item);
+			const id = typeof candidateId === 'string' && candidateId ? candidateId : undefined;
+			if (id && emittedIds.has(id)) continue;
+			if (id) emittedIds.add(id);
+			emitted.push(item);
+			if (total !== undefined && emitted.length >= total) break;
+		}
+		if (total !== undefined && emitted.length >= total) return emitted;
+		const cursor = nextCursor(page);
+		const key = cursorKey(cursor, operation);
+		if (key === undefined) return emitted;
+		if (seen.has(key)) throw paginationError(operation, 'the API returned a repeated cursor');
+		seen.add(key);
+		if (pages >= MAX_SEARCH_PAGES) {
+			throw paginationError(operation, `the ${MAX_SEARCH_PAGES}-page safety limit was reached`);
+		}
+		const body = current.options.body;
+		if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+			throw paginationError(operation, 'the next request body could not be constructed');
+		}
+		current = requestWithBody(
+			current,
+			nextBody(body as IDataObject, cursor, pageSize(total, emitted.length)),
+		);
+	}
 }
 
 function creationContext(this: IExecuteSingleFunctions) {
@@ -103,6 +239,7 @@ export async function prepareCompanySearch(
 	this: IExecuteSingleFunctions,
 	request: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
+	const limit = totalSearchLimit(this, 'companySearchLimit', 'Company Search');
 	request.body = buildCompanySearchBody({
 		companySearchTerm: this.getNodeParameter('companySearchTerm'),
 		companySearchLocation: this.getNodeParameter('companySearchLocation'),
@@ -111,9 +248,32 @@ export async function prepareCompanySearch(
 		hasStaffInfo: this.getNodeParameter('hasStaffInfo'),
 		hasBusinessEmail: this.getNodeParameter('hasBusinessEmail'),
 		hasBusinessPhone: this.getNodeParameter('hasBusinessPhone'),
-		companySearchLimit: this.getNodeParameter('companySearchLimit'),
+		companySearchLimit: pageSize(limit),
 	});
 	return request;
+}
+
+export async function paginateCompanySearch(
+	this: IExecutePaginationFunctions,
+	requestOptions: DeclarativeRestApiSettings.ResultOptions,
+): Promise<INodeExecutionData[]> {
+	const total = totalSearchLimit(this, 'companySearchLimit', 'Company Search');
+	return paginateCursorSearch(
+		this,
+		requestOptions,
+		total,
+		'Company Search',
+		companyCursor,
+		(body, cursor, limit) => ({
+			...body,
+			pagination: {
+				...((body.pagination as IDataObject | undefined) ?? {}),
+				limit,
+				encoded_cursor: cursor as IDataObject[string],
+			},
+		}),
+		(item) => item.json.brand_id,
+	);
 }
 
 export async function receiveCompanySearch(
@@ -182,13 +342,30 @@ export async function prepareSearch(
 	this: IExecuteSingleFunctions,
 	request: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
+	const limit = totalSearchLimit(this, 'resultLimit', 'Business Search');
 	request.body = buildSearchBody({
 		query: this.getNodeParameter('query'),
-		limit: this.getNodeParameter('resultLimit'),
+		limit: pageSize(limit),
 		location: this.getNodeParameter('location'),
 		filters: this.getNodeParameter('filters'),
 	});
 	return request;
+}
+
+export async function paginateSearch(
+	this: IExecutePaginationFunctions,
+	requestOptions: DeclarativeRestApiSettings.ResultOptions,
+): Promise<INodeExecutionData[]> {
+	const total = totalSearchLimit(this, 'resultLimit', 'Business Search');
+	return paginateCursorSearch(
+		this,
+		requestOptions,
+		total,
+		'Business Search',
+		businessCursor,
+		(body, cursor, limit) => ({ ...body, limit, cursor: cursor as IDataObject[string] }),
+		(item) => item.json.id,
+	);
 }
 
 export async function receiveSearch(

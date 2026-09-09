@@ -9,6 +9,7 @@ import {
 	prepareSearch,
 	prepareTask,
 	prepareTaskIds,
+	paginateSearch,
 	receiveBatchStatus,
 	receiveCompanyEmail,
 	receiveCreditBalance,
@@ -80,8 +81,9 @@ describe('Openmart node contract', () => {
 			},
 			search: {
 				request: { method: 'POST', url: '/api/v1/search' },
-				send: { preSend: [prepareSearch] },
+				send: { preSend: [prepareSearch], paginate: true },
 				output: { postReceive: [receiveSearch] },
+				operations: { pagination: paginateSearch },
 			},
 			get: {
 				request: { method: 'GET', url: '/api/v1/task' },
